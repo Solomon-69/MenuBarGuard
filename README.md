@@ -1,5 +1,7 @@
 # Menu Bar Guard
 
+<p align="center"><img src="assets/icon-light-1024.png" width="128"> <img src="assets/icon-dark-1024.png" width="128"></p>
+
 Free Mac app for MacBooks with a notch. When you have so many menu bar icons that some hide
 behind the notch (the little double arrow), Menu Bar Guard politely quits the lowest-priority
 apps **you allow**, and brings them back when there is room again.

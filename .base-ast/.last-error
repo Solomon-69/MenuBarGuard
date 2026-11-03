@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/solomond/.base-gbl/scripts/ast/onto_ast.py", line 16, in <module>
+    from ttl_serializer import serialize
+  File "/Users/solomond/.base-gbl/scripts/ast/ttl_serializer.py", line 17, in <module>
+    _ns_cache: dict[str, str] | None = None
+TypeError: unsupported operand type(s) for |: 'types.GenericAlias' and 'NoneType'
