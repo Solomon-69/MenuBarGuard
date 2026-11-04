@@ -48,3 +48,26 @@ Ice's README was read for the feature list only. No Ice code was looked at or co
   (system default); look never left on. Proof: shots/defaults-off-bar.png shows only the shield added.
 - Live tests that need real clicks run only after 2 minutes of no input, and switch everything off again,
   put the shield back where it was, and relaunch the normal app with open -g.
+
+### Live test results (run only after 2 min of no input; everything switched off again afterwards)
+Proof screenshots: QA/shots/ (not committed).
+- Only the shield is added by default: defaults-off-bar.png, l2-final.png. No dividers, no tint, spacing keys absent.
+- Hiding works by width: divider-pushes-icons-200pt.png / -480pt.png (icons left of the divider pushed out of sight).
+- Order guard works: the shield was left of every icon, so the app refused to collapse (would hide the shield).
+- Ice Bar with real icon pictures under the menu bar: live-04-icebar.png, icebar-img-dark.png.
+- Clicking a hidden icon opens its real menu (Stats): live-16-press.png.
+- Search finds "stat", Enter opens Stats: live-18-search.png.
+- Real ⌃⌥⌘H key press opened the Ice Bar (Carbon hotkey): l2-hotkey.png. Registration status 0.
+- Menu bar look, split + gradient + border + shadow, menus stay readable: l2-look-split.png.
+- Icon spacing written (12) and reset (keys removed): state files l2/live_12, live_13.
+- Settings window (real NSWindow placed off screen) light and dark: win-layout-light.png, win-look-dark.png.
+- Front app was the same before and after every test (no focus stolen).
+
+### Not fully proven / limits
+- Moving OTHER apps' icons between sections was not run on Solomon's bar on purpose (it would rearrange his
+  icons). The same Command-drag code moved our own divider (x 1299 to 1257).
+- "Put dividers in place" could not grab the shield: macOS had put it behind the notch / its own overflow «.
+- Hover, click-on-empty-space and scroll were tested through the same code path via the test hook, not with
+  real pointer events.
+- macOS 27 now has its own overflow chevron («, "Show Hidden Menu Bar Items"); when the bar is full macOS
+  itself hides the left-most icons there (currently including the shield, after Ludus started).
