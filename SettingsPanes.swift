@@ -232,11 +232,14 @@ struct HotkeysPane: View {
 
 struct AutoQuitPane: View {
     @ObservedObject var engine: Engine
+    @ObservedObject private var prefs = Prefs.shared
     @State private var showLog = false
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             PaneTitle(title: "Auto-quit", detail: "If the menu bar is still full after hiding icons, Guard politely quits the lowest apps you allowed, and brings them back when there is room.")
             SettingsGroup {
+                SwitchRow(title: "Show Guard in the menu bar", detail: "Off: Guard keeps working without an icon, so it takes no space. To get Settings back, open Menu Bar Guard again from Applications.", isOn: prefs.showIcon) { prefs.showIcon = $0 }
+                Divided()
                 SwitchRow(title: "Bring apps back automatically", isOn: engine.autoRestore) { engine.autoRestore = $0 }
                 Divided()
                 SettingRow(title: "Act when free space is below", detail: "\(Int(engine.margin)) pt, about \(max(1, Int(engine.margin / 36))) icon(s).") {

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.4
+- New switch in Settings, Auto-quit: Show Guard in the menu bar. Turn it off and Guard keeps working with no icon, so it takes no menu bar space. Opening the app again from Applications brings Settings back.
+
 ## 1.1.3
 - Reacts faster when the menu bar fills up (checks every 2 seconds, acts within about 1 second of a change).
 - Closed apps no longer come back for 2 minutes after one was closed, and need more spare room to return, so icons stop flipping in and out past the notch.

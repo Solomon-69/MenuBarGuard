@@ -42,6 +42,8 @@ import SwiftUI
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
             b.setAccessibilityLabel("Menu Bar Guard")
         }
+        statusItem.isVisible = prefs.showIcon
+        prefs.$showIcon.dropFirst().sink { [weak self] on in DispatchQueue.main.async { self?.statusItem.isVisible = on; if !on { self?.closePanel() } } }.store(in: &cancellables)
         updateIcon()
         Publishers.CombineLatest3(engine.$verdict, engine.$trusted, engine.$guardOn)
             .sink { [weak self] _, _, _ in DispatchQueue.main.async { self?.updateIcon() } }.store(in: &cancellables)
@@ -56,13 +58,18 @@ import SwiftUI
         setUpHiding()
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(testCommand(_:)),
                                                             name: Self.testName, object: nil)
-        engine.ownFrame = { [weak self] in self?.statusItem.button?.window?.frame }
+        engine.ownFrame = { [weak self] in (self?.prefs.showIcon ?? true) ? self?.statusItem.button?.window?.frame : nil }
         engine.start()
         if !d.bool(forKey: "introDone") { showIntro() }
         // After an update macOS can drop the Accessibility switch, and Guard then silently does nothing. Ask once at launch.
         if d.bool(forKey: "introDone"), !Scanner.trusted(), ProcessInfo.processInfo.environment["MBG_NO_ASK"] == nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) { if !Scanner.trusted() { Scanner.askAccessibility() } }
         }
+    }
+
+    /// Opening the app again (Applications, Spotlight) shows Settings, which is the way back when the menu bar icon is off.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings(); return true
     }
 
     private func setUpHiding() {

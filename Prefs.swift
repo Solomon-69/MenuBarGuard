@@ -37,6 +37,7 @@ struct LookConfig: Codable, Equatable {
     static let shared = Prefs()
     private let d = UserDefaults.standard
 
+    @Published var showIcon: Bool { didSet { d.set(showIcon, forKey: "showIcon") } }
     @Published var hidingOn: Bool { didSet { d.set(hidingOn, forKey: "hidingOn") } }
     @Published var alwaysHiddenOn: Bool { didSet { d.set(alwaysHiddenOn, forKey: "alwaysHiddenOn") } }
     @Published var showDividers: Bool { didSet { d.set(showDividers, forKey: "showDividers") } }
@@ -57,6 +58,7 @@ struct LookConfig: Codable, Equatable {
     private init() {
         let d = UserDefaults.standard
         func b(_ k: String, _ def: Bool) -> Bool { d.object(forKey: k) == nil ? def : d.bool(forKey: k) }
+        showIcon = b("showIcon", true)
         hidingOn = b("hidingOn", false)
         alwaysHiddenOn = b("alwaysHiddenOn", false)
         showDividers = b("showDividers", true)
