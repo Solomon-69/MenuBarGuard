@@ -16,6 +16,8 @@ struct LogEntry: Codable, Identifiable, Equatable {
     @Published var quit: [QuitRecord] = []
     @Published var log: [LogEntry] = []
     @Published var layout: BarLayout?
+    /// Every menu bar icon from the last scan, left to right (for the Ice Bar, search and Settings).
+    @Published var entries: [BarEntry] = []
     @Published var verdict: Verdict = .ok
     @Published var trusted = Scanner.trusted()
     @Published var guardOn = true { didSet { save() } }
@@ -26,6 +28,8 @@ struct LogEntry: Codable, Identifiable, Equatable {
 
     /// Tests inject a made-up menu bar here instead of the real one.
     var simulated: BarLayout?
+    /// The hidden sections. Icons hidden on purpose never count as "pushed behind the notch".
+    weak var sections: SectionController?
     private var timer: Timer?
     private var debounce: DispatchWorkItem?
     private var warnedNoCandidate = false
@@ -66,11 +70,15 @@ struct LogEntry: Codable, Identifiable, Equatable {
         guard trusted else { return nil }
         let g = Scanner.geometry()
         let pid = selfPID
-        let items = await Task.detached { Scanner.scanItems(selfPID: pid) }.value
-        return BarLayout(rightMin: g.rightMin, maxX: g.maxX, items: items)
+        let all = await Task.detached { Scanner.scanEntries(selfPID: pid) }.value
+        entries = all
+        guard let sec = sections else { return SectionLogic.layout(all, rightMin: g.rightMin, maxX: g.maxX) }
+        let visible = SectionLogic.onScreen(all, dividers: sec.dividers, shown: sec.shownSections)
+        return SectionLogic.layout(visible, rightMin: g.rightMin, maxX: g.maxX)
     }
 
     func refresh() async {
+        sections?.refit()
         guard let l = await currentLayout() else { layout = nil; return }
         layout = l
         verdict = Planner.verdict(l, margin: margin)
@@ -104,6 +112,14 @@ struct LogEntry: Codable, Identifiable, Equatable {
             // Items can still be sliding into place right after a launch: confirm before acting.
             try? await Task.sleep(nanoseconds: 1_200_000_000)
             await refresh()
+            // Hide icons first: if hidden sections are open, close them and look again.
+            if verdict != .ok, let sec = sections, sec.anyShown, !sec.tempShown {
+                sec.hide()
+                add("Menu bar was full, so Guard hid the hidden icons again first.", "info")
+                try? await Task.sleep(nanoseconds: 900_000_000)
+                await refresh()
+            }
+            // Only if the bar is still full after hiding: quit low-priority apps.
             if verdict != .ok { await shed() }
         } else {
             warnedNoCandidate = false
