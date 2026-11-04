@@ -10,6 +10,22 @@ enum Scanner {
         return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
+    /// Asks for Accessibility the way that always works: clears a stale entry left by an older signature
+    /// (macOS then shows the switch as on but ignores it), asks again, and opens the right Settings page.
+    static func askAccessibility() {
+        if !AXIsProcessTrusted(), let id = Bundle.main.bundleIdentifier {
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+            p.arguments = ["reset", "Accessibility", id]
+            p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+            try? p.run(); p.waitUntilExit()
+        }
+        _ = trusted(prompt: true)
+        if !AXIsProcessTrusted(), let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { NSWorkspace.shared.open(u) }
+        }
+    }
+
     /// Where the free icon area begins and ends, on the screen that has the notch (or the main one).
     @MainActor static func geometry() -> (rightMin: CGFloat, maxX: CGFloat) {
         let screen = NSScreen.screens.first { $0.auxiliaryTopRightArea != nil } ?? NSScreen.screens.first

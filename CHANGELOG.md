@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.1
+- Fixes Guard doing nothing after an update: macOS drops the Accessibility switch when the app is re-signed. Allow now clears the old entry, asks again and opens the right Settings page. Guard also asks once at launch when it is missing.
+
 ## 1.0.0
 First release: overflow detection through Accessibility, priority list with drag reorder and padlock,
 opt-in Auto-quit, restart and auto-restore, log, welcome screens.

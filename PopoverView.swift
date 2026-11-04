@@ -133,7 +133,7 @@ struct PopoverView: View {
                 if engine.trusted {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(guardAccent)
                 } else {
-                    Button("Allow…") { _ = Scanner.trusted(prompt: true) }.buttonStyle(MiniButton())
+                    Button("Allow…") { Scanner.askAccessibility() }.buttonStyle(MiniButton())
                 }
             }
             Button("Show the welcome screens again") { showIntro() }.buttonStyle(MiniButton()).padding(.top, 4)

@@ -58,6 +58,10 @@ import SwiftUI
                                                             name: Self.testName, object: nil)
         engine.start()
         if !d.bool(forKey: "introDone") { showIntro() }
+        // After an update macOS can drop the Accessibility switch, and Guard then silently does nothing. Ask once at launch.
+        if d.bool(forKey: "introDone"), !Scanner.trusted(), ProcessInfo.processInfo.environment["MBG_NO_ASK"] == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) { if !Scanner.trusted() { Scanner.askAccessibility() } }
+        }
     }
 
     private func setUpHiding() {
@@ -318,7 +322,7 @@ import SwiftUI
             arrange: { [weak self] in self?.arrangeSections() },
             rescan: { [weak self] in Task { await self?.engine.refresh(); if self?.sections.anyShown == true { self?.captureNow() } } },
             showIntro: { [weak self] in self?.showIntro() },
-            askAccessibility: { _ = Scanner.trusted(prompt: true) },
+            askAccessibility: { Scanner.askAccessibility() },
             askScreenRecording: { [weak self] in self?.images.request() },
             applySpacing: { [weak self] relaunch in
                 guard let self else { return }
@@ -346,7 +350,7 @@ import SwiftUI
     func introActions(live: Bool) -> IntroActions {
         IntroActions(
             permissionReady: { Scanner.trusted() },
-            setUpPermission: { if live { _ = Scanner.trusted(prompt: true) } },
+            setUpPermission: { if live { Scanner.askAccessibility() } },
             finish: { [weak self] open in
                 guard live else { return }
                 UserDefaults.standard.set(true, forKey: "introDone")
