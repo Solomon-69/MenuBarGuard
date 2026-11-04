@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.2
+- Opening and closing no longer bounce: the icon does not spring on click and the panel opens with a smooth, non-bouncing motion.
+- Guard's own icon now counts as menu bar space, so the free-space figure and the full/almost-full check include it (before, the macOS arrow could appear because of it).
+
 ## 1.1.1
 - Fixes Guard doing nothing after an update: macOS drops the Accessibility switch when the app is re-signed. Allow now clears the old entry, asks again and opens the right Settings page. Guard also asks once at launch when it is missing.
 

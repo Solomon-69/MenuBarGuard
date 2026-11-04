@@ -28,6 +28,8 @@ struct LogEntry: Codable, Identifiable, Equatable {
 
     /// Tests inject a made-up menu bar here instead of the real one.
     var simulated: BarLayout?
+    /// Where Guard's own icon sits in the bar (set by the app). It takes menu bar space too, so it counts.
+    var ownFrame: () -> CGRect? = { nil }
     /// The hidden sections. Icons hidden on purpose never count as "pushed behind the notch".
     weak var sections: SectionController?
     private var timer: Timer?
@@ -72,9 +74,17 @@ struct LogEntry: Codable, Identifiable, Equatable {
         let pid = selfPID
         let all = await Task.detached { Scanner.scanEntries(selfPID: pid) }.value
         entries = all
-        guard let sec = sections else { return SectionLogic.layout(all, rightMin: g.rightMin, maxX: g.maxX) }
-        let visible = SectionLogic.onScreen(all, dividers: sec.dividers, shown: sec.shownSections)
-        return SectionLogic.layout(visible, rightMin: g.rightMin, maxX: g.maxX)
+        var lay: BarLayout
+        if let sec = sections {
+            let visible = SectionLogic.onScreen(all, dividers: sec.dividers, shown: sec.shownSections)
+            lay = SectionLogic.layout(visible, rightMin: g.rightMin, maxX: g.maxX)
+        } else {
+            lay = SectionLogic.layout(all, rightMin: g.rightMin, maxX: g.maxX)
+        }
+        if let f = ownFrame(), f.width > 1 {
+            lay.items.append(BarItem(pid: selfPID, bundleID: ownID, name: "Menu Bar Guard", x: f.minX, width: f.width))
+        }
+        return lay
     }
 
     func refresh() async {

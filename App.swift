@@ -56,6 +56,7 @@ import SwiftUI
         setUpHiding()
         DistributedNotificationCenter.default().addObserver(self, selector: #selector(testCommand(_:)),
                                                             name: Self.testName, object: nil)
+        engine.ownFrame = { [weak self] in self?.statusItem.button?.window?.frame }
         engine.start()
         if !d.bool(forKey: "introDone") { showIntro() }
         // After an update macOS can drop the Accessibility switch, and Guard then silently does nothing. Ask once at launch.
@@ -126,7 +127,6 @@ import SwiftUI
         let e = NSApp.currentEvent
         let flags = e?.modifierFlags ?? []
         let panelClick = e?.type == .rightMouseUp || flags.contains(.control)
-        if let b = statusItem.button { bounce(b) }
         if panelClick || !prefs.hidingOn { popover.isShown ? closePanel() : openPanel(); return }
         if popover.isShown { closePanel() }
         reveal(always: flags.contains(.option), toggle: true)

@@ -90,7 +90,7 @@ struct IceBarView: View {
         .scaleEffect(shown || reduceMotion ? 1 : 0.96, anchor: .topTrailing)
         .opacity(shown ? 1 : 0)
         .offset(y: shown || reduceMotion ? 0 : -6)
-        .animation(.spring(duration: 0.32, bounce: 0.18), value: shown)
+        .animation(.spring(duration: 0.3, bounce: 0), value: shown)
         .onAppear { shown = true }
         .onChange(of: model.openCount) { _, _ in shown = false; DispatchQueue.main.async { shown = true } }
     }

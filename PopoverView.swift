@@ -45,8 +45,8 @@ struct PopoverView: View {
         .tint(guardAccent)
         .scaleEffect(shown || reduceMotion ? 1 : 0.97)
         .opacity(shown || reduceMotion ? 1 : 0.0)
-        .animation(.spring(duration: 0.42, bounce: 0.18), value: shown)
-        .animation(.spring(duration: 0.3, bounce: 0.1), value: tab)
+        .animation(.spring(duration: 0.38, bounce: 0), value: shown)
+        .animation(.spring(duration: 0.3, bounce: 0), value: tab)
         .onChange(of: engine.openCount) { _, _ in shown = false; DispatchQueue.main.async { shown = true } }
         .onAppear { shown = true }
     }
@@ -100,11 +100,11 @@ struct PopoverView: View {
                         .offset(x: g.size.width * min(1, engine.margin / cap))
                         .opacity(0)
                 }
-                .animation(.spring(duration: 0.5, bounce: 0.12), value: used)
+                .animation(.spring(duration: 0.5, bounce: 0), value: used)
             }
             .frame(height: 8)
             HStack {
-                Text("\(l?.items.count ?? 0) menu bar apps").font(.system(size: 10)).foregroundStyle(.secondary)
+                Text("\((l?.items.filter { $0.bundleID != Bundle.main.bundleIdentifier }.count) ?? 0) menu bar apps").font(.system(size: 10)).foregroundStyle(.secondary)
                 Spacer()
                 Text("Acts below \(Int(engine.margin)) pt free").font(.system(size: 10)).foregroundStyle(.secondary)
             }
