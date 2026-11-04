@@ -122,7 +122,7 @@ import SwiftUI
         let sp = SpacingApply.read()
         let o: [String: Any] = [
             "verdict": "\(engine.verdict)", "trusted": engine.trusted, "guardOn": engine.guardOn,
-            "free": l.map { Planner.free($0) } ?? -1, "macOverflow": l?.macOverflow ?? false, "ovFrame": "\(Scanner.overflowFrame)", "items": l?.items.count ?? 0,
+            "free": l.map { Planner.free($0) } ?? -1, "macOverflow": l?.macOverflow ?? false, "raw": Scanner.rawDump, "ovFrame": "\(Scanner.overflowFrame)", "items": l?.items.count ?? 0,
             "quit": engine.quit.map(\.bundleID), "rules": engine.rules.map(\.bundleID),
             "auto": engine.rules.filter(\.autoQuit).map(\.bundleID), "never": engine.rules.filter(\.neverQuit).map(\.bundleID),
             "log": engine.log.prefix(30).map(\.text), "popoverShown": a.popover.isShown,

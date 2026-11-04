@@ -63,6 +63,10 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
     private var noRestoreUntil = Date.distantPast
     /// Apps left inside macOS's « arrow after Roomy made room. Restarted once so they come back into the bar.
     private var stuck: [String] = []
+    /// Apps closed while macOS's « arrow stayed up. At most 2 per sighting, so a stuck Apple icon never empties the bar.
+    private var overflowQuits = 0
+    private var arrowFixes: [Date] = []
+    private var noFixUntil = Date.distantPast
     private let d = UserDefaults.standard
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private let ownID = Bundle.main.bundleIdentifier ?? "com.solomon.MenuBarGuard"
@@ -168,7 +172,9 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         }
         // macOS's « arrow means full, but it lingers a few seconds after an app closes, and only counts when the bar is really tight.
         var plain = lay; plain.macOverflow = false
-        lay.macOverflow = Scanner.sawOverflow && Planner.free(plain) < 60 && Date().timeIntervalSince(lastQuitAt) > 15
+        if !Scanner.sawOverflow { overflowQuits = 0 }   // arrow gone: episode over
+        lay.macOverflow = false && Scanner.sawOverflow && overflowQuits < 2 && Date().timeIntervalSince(lastQuitAt) > 15
+        _ = plain
         if let f = ownFrame(), f.width > 1 {
             lay.items.append(BarItem(pid: selfPID, bundleID: ownID, name: "Roomy", x: f.minX, width: f.width))
         }
@@ -207,7 +213,7 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         await refresh()
         guard guardOn, trusted, layout != nil else { return }
         if !newlyBuried().isEmpty { await unbury() }
-        if !stuck.isEmpty, Date().timeIntervalSince(lastQuitAt) > 12 { await restartStuck() }
+        if Scanner.sawOverflow, Date().timeIntervalSince(lastQuitAt) > 15, Date() > noFixUntil { await fixArrow() }
         if verdict != .ok {
             // Items can still be sliding into place right after a launch: confirm before acting.
             try? await Task.sleep(nanoseconds: 600_000_000)
@@ -332,6 +338,7 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
             if app.isTerminated {
                 lastQuitAt = Date()
                 if l.macOverflow {
+                    overflowQuits += 1
                     count = 99   // one app per « arrow sighting; look again once the bar settles
                     // Apps stuck in the « arrow: restart them once there is room, so macOS puts them back in the bar.
                     let shown = Set(l.items.map(\.bundleID))
@@ -352,6 +359,51 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
             count += 1
         }
         if verdict == .ok { add("Menu bar has room again (\(Int(Planner.free(layout ?? BarLayout(rightMin: 0, maxX: 0, items: [])))) pt free).", "info") }
+    }
+
+    /// macOS's « arrow is up: some app icons did not fit. Close the allowed app used longest ago, then restart the hidden apps
+    /// so macOS puts them back in the bar (it never pulls them out by itself). If only Apple icons are hidden, do nothing.
+    private func fixArrow() async {
+        guard let l = layout else { return }
+        arrowFixes = arrowFixes.filter { Date().timeIntervalSince($0) < 300 }
+        guard arrowFixes.count < 2 else { noFixUntil = Date().addingTimeInterval(300); add("The « arrow is still there after 2 tries. Roomy will try again in 5 minutes.", "warn"); return }
+        let shown = Set(l.items.map(\.bundleID))
+        let hiddenApps = rules.filter { !shown.contains($0.bundleID) && !$0.bundleID.hasPrefix("com.apple.") && $0.bundleID != ownID }
+            .compactMap { r in NSRunningApplication.runningApplications(withBundleIdentifier: r.bundleID).first.map { (r, $0) } }
+        guard !hiddenApps.isEmpty else { return }   // only Apple items behind the arrow: closing apps would not help
+        arrowFixes.append(Date())
+        busy = true; defer { busy = false }
+        let hiddenIDs = Set(hiddenApps.map(\.0.bundleID))
+        var used = lastUsed
+        for it in l.items where used[it.bundleID] == nil { used[it.bundleID] = usedAt(it.bundleID, it.pid) }
+        var skip = Set<String>([ownID]).union(justLaunched.keys).union(hiddenIDs)
+        skip.formUnion(rules.filter { !$0.autoQuit }.map(\.bundleID))
+        if let rule = Planner.nextToQuit(l, rules: rules, skip: skip, lastUsed: used),
+           let app = NSRunningApplication.runningApplications(withBundleIdentifier: rule.bundleID).first {
+            let width = l.items.first { $0.bundleID == rule.bundleID }?.width ?? 30
+            let path = rule.path ?? app.bundleURL?.path
+            add("\(hiddenApps.map(\.0.name).joined(separator: ", ")) did not fit (macOS put it behind the « arrow). Closing \(rule.name), used longest ago.", "quit")
+            app.terminate()
+            var w = 0.0
+            while !app.isTerminated, w < 8 { try? await Task.sleep(nanoseconds: 250_000_000); w += 0.25 }
+            if app.isTerminated {
+                quit.removeAll { $0.bundleID == rule.bundleID }
+                quit.append(QuitRecord(bundleID: rule.bundleID, name: rule.name, path: path, width: width, date: Date()))
+                save()
+            }
+        }
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        for (r, a) in hiddenApps {
+            guard let url = a.bundleURL else { continue }
+            add("Restarting \(r.name) so macOS shows it in the bar.", "restore")
+            a.terminate()
+            var w = 0.0
+            while !a.isTerminated, w < 6 { try? await Task.sleep(nanoseconds: 250_000_000); w += 0.25 }
+            let cfg = NSWorkspace.OpenConfiguration(); cfg.activates = false; cfg.addsToRecentItems = false
+            _ = try? await NSWorkspace.shared.openApplication(at: url, configuration: cfg)
+        }
+        lastQuitAt = Date()
+        await refresh()
     }
 
     private func restartStuck() async {

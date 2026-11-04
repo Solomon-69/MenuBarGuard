@@ -7,6 +7,8 @@ enum Scanner {
     /// True when the last scan saw macOS's own « overflow arrow (icons pushed out of the bar).
     nonisolated(unsafe) static var sawOverflow = false
     nonisolated(unsafe) static var overflowFrame: CGRect = .zero
+    /// Debug: every menu bar element macOS reports, including ones with no size (inside the « arrow).
+    nonisolated(unsafe) static var rawDump: [String] = []
     static func trusted(prompt: Bool = false) -> Bool {
         guard prompt else { return AXIsProcessTrusted() }
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -53,13 +55,16 @@ enum Scanner {
     /// Every menu bar icon of every app. Runs off the main thread (a stuck app must not freeze the panel).
     static func scanEntries(selfPID: Int32) -> [BarEntry] {
         var out: [BarEntry] = []
-        var overflow = false, ovFrame = CGRect.zero
-        defer { sawOverflow = overflow; overflowFrame = ovFrame }
+        var overflow = false, ovFrame = CGRect.zero, raw: [String] = []
+        defer { sawOverflow = overflow; overflowFrame = ovFrame; rawDump = raw }
         for app in NSWorkspace.shared.runningApplications where app.processIdentifier != selfPID {
             guard let id = app.bundleIdentifier else { continue }
             let system = id == "com.apple.MenuBarAgent" || id == "com.apple.controlcenter" || id == "com.apple.systemuiserver"
-            for (i, c) in extras(app.processIdentifier).enumerated() {
+            let ex = extras(app.processIdentifier)
+            for (i, c) in ex.enumerated() {
                 let f = frame(c)
+                var rid: CFTypeRef?; AXUIElementCopyAttributeValue(c, kAXIdentifierAttribute as CFString, &rid)
+                raw.append("\(id) \(i) \(Int(f.minX)),\(Int(f.minY)) \(Int(f.width))x\(Int(f.height)) \((rid as? String) ?? "") \(text(c))")
                 guard f.width > 0 else { continue }
                 var ident: CFTypeRef?
                 AXUIElementCopyAttributeValue(c, kAXIdentifierAttribute as CFString, &ident)
@@ -76,6 +81,13 @@ enum Scanner {
             }
         }
         return out.sorted { $0.x < $1.x }
+    }
+
+    static func hasExtrasBar(_ pid: Int32) -> Bool {
+        let el = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(el, 0.25)
+        var bar: CFTypeRef?
+        return AXUIElementCopyAttributeValue(el, "AXExtrasMenuBar" as CFString, &bar) == .success
     }
 
     /// The accessibility elements of one app's menu bar icons.
