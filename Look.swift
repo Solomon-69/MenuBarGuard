@@ -57,8 +57,9 @@ import SwiftUI
 
     private func make() -> NSWindow {
         let w = NSWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
-        // One step below the menu bar layer: above every app window, under menus and icons.
-        w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) - 1)
+        // On macOS 26+ the menu bar paints its own backdrop, so the tint must sit on the menu bar layer itself
+        // (icons are one layer higher and stay on top; app menu text shows through the see-through tint).
+        w.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)))
         w.isOpaque = false; w.backgroundColor = .clear; w.hasShadow = false
         w.ignoresMouseEvents = true
         w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]

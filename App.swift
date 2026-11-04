@@ -77,6 +77,10 @@ import SwiftUI
         triggers.isIceBarShown = { [weak self] in self?.iceBar.isShown ?? false }
         triggers.iconSpans = { [weak self] in self?.engine.entries.map { $0.x...($0.x + $0.width) } ?? [] }
         triggers.start()
+        // Switching the Ice Bar or hiding off closes the bar at once.
+        Publishers.CombineLatest(prefs.$useIceBar, prefs.$hidingOn).sink { [weak self] ice, hiding in
+            if !ice || !hiding { DispatchQueue.main.async { self?.iceBar.hide() } }
+        }.store(in: &cancellables)
         iceBar.onPick = { [weak self] e in self?.press(e) }
         search.onPick = { [weak self] e in self?.press(e) }
         search.model.sectionOf = { [weak self] e in self.map { SectionLogic.section(e, $0.sections.dividers) } ?? .visible }

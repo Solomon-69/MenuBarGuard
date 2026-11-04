@@ -58,7 +58,7 @@ struct HotkeyCombo: Codable, Equatable {
             guard let c = all[a.rawValue], let id = ids[a] else { continue }
             var ref: EventHotKeyRef?
             let hk = EventHotKeyID(signature: OSType(0x4D424721), id: id)        // 'MBG!'
-            let err = RegisterEventHotKey(c.keyCode, c.carbonMods, hk, GetEventDispatcherTarget(), 0, &ref)
+            let err = RegisterEventHotKey(c.keyCode, c.carbonMods, hk, GetApplicationEventTarget(), 0, &ref)
             status[a.rawValue] = err
             if err == noErr, let ref { refs[id] = ref }
         }
@@ -73,7 +73,7 @@ struct HotkeyCombo: Codable, Equatable {
         guard !handlerInstalled else { return }
         handlerInstalled = true
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetEventDispatcherTarget(), { _, event, _ in
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
             var hk = EventHotKeyID()
             GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hk)

@@ -199,7 +199,8 @@ struct IntroView: View {
     private var hiding: some View {
         VStack(spacing: 14) {
             tile("eye.slash.fill", 64).rise(0, shown)
-            Text("Hide icons you rarely need").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
+            Text("Optional: hide icons you rarely need").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
+            Text("Off until you switch it on in Settings > General.").font(.system(size: 12)).foregroundStyle(.secondary).rise(1, shown)
             VStack(spacing: 8) {
                 feature("chevron.compact.left", "Left of ‹ is hidden", "Click the shield to see those icons, in a bar under the notch.").rise(2, shown)
                 feature("option", "Left of « is always hidden", "Only shows with Option-click on the shield, or its hotkey.").rise(3, shown)
@@ -244,7 +245,7 @@ struct IntroView: View {
                 .rise(0, shown)
             Text("It lives in your menu bar").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
             VStack(spacing: 8) {
-                feature("cursorarrow.click", "Click the shield icon", "Shows hidden icons. Right-click opens the panel and Settings.").rise(2, shown)
+                feature("cursorarrow.click", "Click the shield icon", "Opens the panel. Settings has the optional extras.").rise(2, shown)
                 feature("switch.2", "Turn on Auto-quit per app", "Nothing is ever closed unless you switch it on.").rise(3, shown)
                 feature("list.bullet.rectangle", "Everything is logged", "The Log tab shows what was hidden, closed and when.").rise(4, shown)
             }
