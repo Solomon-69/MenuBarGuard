@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.3
+- Reacts faster when the menu bar fills up (checks every 2 seconds, acts within about 1 second of a change).
+- Closed apps no longer come back for 2 minutes after one was closed, and need more spare room to return, so icons stop flipping in and out past the notch.
+
 ## 1.1.2
 - Opening and closing no longer bounce: the icon does not spring on click and the panel opens with a smooth, non-bouncing motion.
 - Guard's own icon now counts as menu bar space, so the free-space figure and the full/almost-full check include it (before, the macOS arrow could appear because of it).

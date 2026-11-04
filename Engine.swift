@@ -35,6 +35,8 @@ struct LogEntry: Codable, Identifiable, Equatable {
     private var timer: Timer?
     private var debounce: DispatchWorkItem?
     private var warnedNoCandidate = false
+    /// When the last app was closed. Nothing comes back for a while after that, so the bar never flips full, room, full.
+    private var lastQuitAt = Date.distantPast
     private let d = UserDefaults.standard
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private let ownID = Bundle.main.bundleIdentifier ?? "com.solomon.MenuBarGuard"
@@ -45,7 +47,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
     }
 
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { [weak self] _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.tick() }
         }
         let nc = NSWorkspace.shared.notificationCenter
@@ -61,7 +63,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
         debounce?.cancel()
         let w = DispatchWorkItem { [weak self] in Task { @MainActor in await self?.tick() } }
         debounce = w
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5, execute: w)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: w)
     }
 
     // MARK: Reading the bar
@@ -120,7 +122,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
         guard guardOn, trusted, layout != nil else { return }
         if verdict != .ok {
             // Items can still be sliding into place right after a launch: confirm before acting.
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            try? await Task.sleep(nanoseconds: 600_000_000)
             await refresh()
             // Hide icons first: if hidden sections are open, close them and look again.
             if verdict != .ok, let sec = sections, sec.anyShown, !sec.tempShown {
@@ -133,7 +135,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
             if verdict != .ok { await shed() }
         } else {
             warnedNoCandidate = false
-            if autoRestore { await restoreOne() }
+            if autoRestore, Date().timeIntervalSince(lastQuitAt) > 120 { await restoreOne() }
         }
     }
 
@@ -158,6 +160,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
             var waited = 0.0
             while !app.isTerminated, waited < 8 { try? await Task.sleep(nanoseconds: 250_000_000); waited += 0.25 }
             if app.isTerminated {
+                lastQuitAt = Date()
                 quit.removeAll { $0.bundleID == rule.bundleID }
                 quit.append(QuitRecord(bundleID: rule.bundleID, name: rule.name, path: path,
                                        width: width, date: Date()))
@@ -167,7 +170,7 @@ struct LogEntry: Codable, Identifiable, Equatable {
                 skip.insert(rule.bundleID)
             }
             save()
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            try? await Task.sleep(nanoseconds: 800_000_000)
             await refresh()
             count += 1
         }

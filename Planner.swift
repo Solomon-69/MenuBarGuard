@@ -43,7 +43,7 @@ enum Planner {
     /// Space one icon needs besides its own width (the gap macOS leaves between icons).
     static let gap: CGFloat = 8
     /// Extra room kept after bringing an app back, so it never flips straight back to "full".
-    static let slack: CGFloat = 12
+    static let slack: CGFloat = 36
 
     /// Icons macOS pushed out of view: behind the notch, or off the screen.
     static func hidden(_ l: BarLayout) -> [BarItem] {

@@ -31,13 +31,13 @@ check(Planner.nextToQuit(bar([it("A", 780)]), rules: rules(auto: ["D"]), skip: [
 // Restore: needs width + gap + margin + slack of free room, most important first.
 let q = [QuitRecord(bundleID: "C", name: "C", path: nil, width: 30, date: Date()),
          QuitRecord(bundleID: "B", name: "B", path: nil, width: 30, date: Date())]
-let spare = bar([it("A", 800 + 40 + 12 + 38 - 1)])           // 1 pt short
+let spare = bar([it("A", 800 + 40 + 36 + 38 - 1)])           // 1 pt short
 check(Planner.nextToRestore(spare, rules: rules(), quit: q, margin: 40) == nil, "not enough room, no restore")
-let enough = bar([it("A", 800 + 40 + 12 + 38)])
+let enough = bar([it("A", 800 + 40 + 36 + 38)])
 check(Planner.nextToRestore(enough, rules: rules(), quit: q, margin: 40)?.bundleID == "B", "enough room, most important comes back first")
 check(Planner.nextToRestore(tight, rules: rules(), quit: q, margin: 40) == nil, "no restore while tight")
 // No flip-flop: after restoring, free stays at or above the margin.
-let after = bar([it("A", 800 + 40 + 12 + 38 - 38)])
+let after = bar([it("A", 800 + 40 + 36 + 38 - 38)])
 check(Planner.free(after) >= 40 + 12 - 38 + 38 - 38 || true, "sanity")
 check(Planner.verdict(after, margin: 40) == .ok, "after a restore the bar is still ok (no loop)")
 
