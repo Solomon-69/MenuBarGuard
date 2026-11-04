@@ -1,5 +1,5 @@
-// Intro.swift: the welcome window shown once after installing Menu Bar Guard. Three short pages:
-// what it does, the one-time Accessibility permission, and how to use it. Skippable. Springs throughout; Reduce Motion gets fades.
+// Intro.swift: the welcome window shown once after installing Menu Bar Guard. Five short pages:
+// what it does, Accessibility, optional Screen Recording, hiding icons, and how to use it. Skippable. Springs throughout; Reduce Motion gets fades.
 import AppKit
 import Combine
 import SwiftUI
@@ -51,6 +51,8 @@ struct IntroActions {
     let permissionReady: () -> Bool
     let setUpPermission: () -> Void
     let finish: (_ openPanel: Bool) -> Void
+    var screenReady: () -> Bool = { false }
+    var setUpScreen: () -> Void = {}
 }
 
 struct IntroView: View {
@@ -62,8 +64,9 @@ struct IntroView: View {
     @State private var seen: Set<Int> = [0]     // pages whose rise-in already played; it never replays
     @State private var forward = true
     @State private var ready = false
+    @State private var screenReady = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    static let pages = 3
+    static let pages = 5
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -72,6 +75,8 @@ struct IntroView: View {
                 switch page {
                 case 0: welcome.transition(slide)
                 case 1: permission.transition(slide)
+                case 2: screenPermission.transition(slide)
+                case 3: hiding.transition(slide)
                 default: howTo.transition(slide)
                 }
             }
@@ -86,8 +91,11 @@ struct IntroView: View {
         .frame(width: 456)
         .background(backdrop)
         .tint(accent)
-        .onAppear { shown = true; ready = actions.permissionReady() }
-        .onReceive(tick) { _ in if page == 1 { ready = actions.permissionReady() } }
+        .onAppear { shown = true; ready = actions.permissionReady(); screenReady = actions.screenReady() }
+        .onReceive(tick) { _ in
+            if page == 1 { ready = actions.permissionReady() }
+            if page == 2 { screenReady = actions.screenReady() }
+        }
     }
 
     private var slide: AnyTransition {
@@ -169,6 +177,65 @@ struct IntroView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var screenPermission: some View {
+        VStack(spacing: 14) {
+            tile("photo.on.rectangle", 64).rise(0, shown)
+            Text("Pictures of your icons").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
+            Text("Optional. With Screen Recording access, the bar under the menu bar and search show the real icons. Without it, they show each app's icon and name.")
+                .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .rise(2, shown)
+            statusCard(screenReady, "Pictures on", "Not set up", "Real icon pictures in the Ice Bar and search.", "Skip it if you like; it still works.") {
+                actions.setUpScreen(); screenReady = actions.screenReady()
+            }
+            .rise(3, shown)
+            Text("Only the menu bar strip is looked at, only on your Mac. Nothing is saved to disk or sent.")
+                .font(.system(size: 11)).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .rise(4, shown)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var hiding: some View {
+        VStack(spacing: 14) {
+            tile("eye.slash.fill", 64).rise(0, shown)
+            Text("Hide icons you rarely need").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
+            VStack(spacing: 8) {
+                feature("chevron.compact.left", "Left of ‹ is hidden", "Click the shield to see those icons, in a bar under the notch.").rise(2, shown)
+                feature("option", "Left of « is always hidden", "Only shows with Option-click on the shield, or its hotkey.").rise(3, shown)
+                feature("hand.draw.fill", "Rearrange in Settings", "Drag icons between sections. No Command key needed.").rise(4, shown)
+                feature("arrow.down.right.and.arrow.up.left", "Hide first, quit last", "If the bar is still full, Guard quits the apps you allowed.").rise(5, shown)
+            }
+            .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func statusCard(_ ok: Bool, _ onTitle: String, _ offTitle: String, _ onText: String, _ offText: String,
+                            ask: @escaping () -> Void) -> some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(ok ? accent : Color.primary.opacity(0.08))
+                Image(systemName: ok ? "checkmark" : "lock.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(ok ? Color.white : Color.secondary)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .frame(width: 28, height: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(ok ? onTitle : offTitle).font(.system(size: 13, weight: .medium))
+                Text(ok ? onText : offText).font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+            Spacer()
+            if !ok {
+                Button("Allow…", action: ask).buttonStyle(PillStyle(accent: accent)).transition(.scale(scale: 0.9).combined(with: .opacity))
+            }
+        }
+        .padding(12)
+        .introCard()
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: ok)
+    }
+
     private var howTo: some View {
         VStack(spacing: 14) {
             tile("menubar.rectangle", 64)
@@ -177,9 +244,9 @@ struct IntroView: View {
                 .rise(0, shown)
             Text("It lives in your menu bar").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
             VStack(spacing: 8) {
-                feature("cursorarrow.click", "Click the shield icon", "Opens the panel with your priority list.").rise(2, shown)
+                feature("cursorarrow.click", "Click the shield icon", "Shows hidden icons. Right-click opens the panel and Settings.").rise(2, shown)
                 feature("switch.2", "Turn on Auto-quit per app", "Nothing is ever closed unless you switch it on.").rise(3, shown)
-                feature("list.bullet.rectangle", "Everything is logged", "The Log tab shows what was closed and when.").rise(4, shown)
+                feature("list.bullet.rectangle", "Everything is logged", "The Log tab shows what was hidden, closed and when.").rise(4, shown)
             }
             .padding(.top, 6)
         }

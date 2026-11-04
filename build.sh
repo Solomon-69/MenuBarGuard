@@ -8,9 +8,11 @@ DEST="${1:-$REPO/build}"; [ "$DEST" = "--regen-icon" ] && DEST="$REPO/build"
 [ "${1:-}" = "--regen-icon" ] || [ "${2:-}" = "--regen-icon" ] && swift "$REPO/make-icon.swift"
 APP="$DEST/MenuBarGuard.app"; C="$APP/Contents"
 rm -rf "$APP"; mkdir -p "$C/MacOS" "$C/Resources"
+SRC=(); for f in "$REPO"/*.swift; do [ "$(basename "$f")" = make-icon.swift ] || SRC+=("$f"); done
 swiftc -O -parse-as-library -swift-version 5 -target "$TARGET" \
   -framework AppKit -framework SwiftUI -framework ServiceManagement -framework ApplicationServices \
-  "$REPO"/{App,Engine,Planner,Scanner,PopoverView,PopoverStyle,Intro,SmoothSwitch}.swift -o "$C/MacOS/MenuBarGuard"
+  -framework ScreenCaptureKit -framework Carbon \
+  "${SRC[@]}" -o "$C/MacOS/MenuBarGuard"
 cp "$REPO/Info.plist" "$C/"; cp "$REPO/assets/MenuBarGuard.icns" "$C/Resources/" 2>/dev/null || true
 xattr -cr "$APP"
 codesign --force --deep --sign "${SIGN_ID:-Apple Development: solomond24@icloud.com (CCW242B7M5)}" "$APP" 2>/dev/null \
