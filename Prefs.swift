@@ -60,10 +60,12 @@ struct LookConfig: Codable, Equatable {
     private init() {
         let d = UserDefaults.standard
         func b(_ k: String, _ def: Bool) -> Bool { d.object(forKey: k) == nil ? def : d.bool(forKey: k) }
-        showIcon = b("showIcon", true)
+        showIcon = b("showIcon", false)
         autoHide = b("autoHide", false)
         hidingOn = b("hidingOn", false)
-        if d.object(forKey: "migrated131") == nil { autoHide = false; hidingOn = false; d.removeObject(forKey: "hiddenByGuard"); d.set(true, forKey: "migrated131") }  // 1.3.0: close old apps, never bury new ones
+        if d.object(forKey: "migrated131") == nil { autoHide = false; hidingOn = false; d.removeObject(forKey: "hiddenByGuard"); d.set(true, forKey: "migrated131") }
+        // 1.3.2: Roomy works fully invisibly by default (no shield, no ‹ divider). Opening the app shows Settings.
+        if d.object(forKey: "migrated132") == nil { showIcon = false; hidingOn = false; d.set(true, forKey: "migrated132") }  // 1.3.0: close old apps, never bury new ones
         alwaysHiddenOn = b("alwaysHiddenOn", false)
         showDividers = b("showDividers", true)
         useIceBar = b("useIceBar", false)
