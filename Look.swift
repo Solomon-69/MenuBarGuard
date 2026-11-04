@@ -50,7 +50,7 @@ import SwiftUI
         model.width = screen.frame.width; model.height = h
         if let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea { model.notch = (l.maxX - screen.frame.minX)...(r.minX - screen.frame.minX) } else { model.notch = nil }
         model.iconsMinX = (iconsMinX() ?? screen.frame.maxX * 0.6) - screen.frame.minX
-        Task.detached { let x = Scanner.appMenusMaxX(); await MainActor.run { self.model.appMenusMaxX = x } }
+        Task.detached { let x = Scanner.appMenusMaxX(); await MainActor.run { if x > 80 { self.model.appMenusMaxX = x } } }
         w.setFrame(CGRect(x: screen.frame.minX, y: screen.frame.maxY - h - 12, width: screen.frame.width, height: h + 12), display: true)
         w.orderFrontRegardless()
     }
@@ -112,8 +112,9 @@ struct LookView: View {
         case .full: return [CGRect(x: 0, y: 0, width: model.width, height: h)]
         case .rounded: return [CGRect(x: 4, y: 2, width: model.width - 8, height: h - 4)]
         case .split:
-            let leftEnd = max(120, model.notch?.lowerBound ?? (model.appMenusMaxX + 10))
-            let left = CGRect(x: 4, y: 2, width: min(leftEnd, model.appMenusMaxX + 14) - 4, height: h - 4)
+            let room = (model.notch?.lowerBound ?? model.width) - 6          // the left piece never runs into the notch
+            let leftEnd = max(160, min(room, model.appMenusMaxX + 14))
+            let left = CGRect(x: 4, y: 2, width: leftEnd - 4, height: h - 4)
             let start = max(model.notch?.upperBound ?? 0, model.iconsMinX - 8)
             let right = CGRect(x: start, y: 2, width: model.width - start - 4, height: h - 4)
             return [left, right]

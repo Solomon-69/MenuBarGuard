@@ -196,7 +196,7 @@ struct LookPane: View {
                 ForEach(["wifi", "battery.75", "magnifyingglass"], id: \.self) { Image(systemName: $0).foregroundStyle(.white).font(.system(size: 11)) }
             }
             .padding(.horizontal, 12).frame(width: 460, height: 26)
-            RoundedRectangle(cornerRadius: 8).fill(.black).frame(width: 60, height: 26).offset(x: 200)
+            UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8).fill(.black).frame(width: 60, height: 26).offset(x: 200)
         }
         .frame(width: 460, height: 70, alignment: .top)
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))

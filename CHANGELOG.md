@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5
+- Menu bar look, Split shape: the left piece now always wraps the app menus (before, it could shrink to a sliver). Both pieces show.
+- The preview in Settings draws the notch like the real one (flat top, rounded bottom).
+
 ## 1.1.4
 - New switch in Settings, Auto-quit: Show Guard in the menu bar. Turn it off and Guard keeps working with no icon, so it takes no menu bar space. Opening the app again from Applications brings Settings back.
 
