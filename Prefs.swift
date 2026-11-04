@@ -61,8 +61,9 @@ struct LookConfig: Codable, Equatable {
         let d = UserDefaults.standard
         func b(_ k: String, _ def: Bool) -> Bool { d.object(forKey: k) == nil ? def : d.bool(forKey: k) }
         showIcon = b("showIcon", true)
-        autoHide = b("autoHide", true)
+        autoHide = b("autoHide", false)
         hidingOn = b("hidingOn", false)
+        if d.object(forKey: "migrated131") == nil { autoHide = false; hidingOn = false; d.removeObject(forKey: "hiddenByGuard"); d.set(true, forKey: "migrated131") }  // 1.3.0: close old apps, never bury new ones
         alwaysHiddenOn = b("alwaysHiddenOn", false)
         showDividers = b("showDividers", true)
         useIceBar = b("useIceBar", false)

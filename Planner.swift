@@ -17,6 +17,8 @@ struct BarLayout: Equatable {
     var rightMin: CGFloat
     var maxX: CGFloat
     var items: [BarItem]
+    /// macOS 26 shows its own « "more" arrow when icons no longer fit. Then the bar is full, whatever the numbers say.
+    var macOverflow = false
 }
 
 enum Verdict: Equatable { case ok, tight, overflow }
@@ -52,13 +54,13 @@ enum Planner {
 
     /// Empty room between the notch and the left-most visible icon. Zero when something is hidden.
     static func free(_ l: BarLayout) -> CGFloat {
-        if !hidden(l).isEmpty { return 0 }
+        if l.macOverflow || !hidden(l).isEmpty { return 0 }
         guard let left = l.items.map(\.x).min() else { return max(0, l.maxX - l.rightMin) }
         return max(0, left - l.rightMin)
     }
 
     static func verdict(_ l: BarLayout, margin: CGFloat) -> Verdict {
-        if !hidden(l).isEmpty { return .overflow }
+        if l.macOverflow || !hidden(l).isEmpty { return .overflow }
         return free(l) < margin ? .tight : .ok
     }
 

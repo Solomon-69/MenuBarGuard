@@ -240,7 +240,7 @@ struct AutoQuitPane: View {
             SettingsGroup {
                 SwitchRow(title: "Show Roomy in the menu bar", detail: "Off: Roomy keeps working without an icon, so it takes no space. To get Settings back, open Roomy again from Applications.", isOn: prefs.showIcon) { prefs.showIcon = $0 }
                 Divided()
-                SwitchRow(title: "Hide icons first when the bar is full", detail: "Roomy moves the lowest apps behind the shield (they keep running). Click the shield to see them.", isOn: prefs.autoHide) { prefs.autoHide = $0 }
+                SwitchRow(title: "Hide icons if no app can be closed", detail: "Normally Roomy closes the app you used longest ago. With this on, when nothing can be closed, it moves icons behind the arrows instead.", isOn: prefs.autoHide) { prefs.autoHide = $0 }
                 Divided()
                 SwitchRow(title: "Bring apps back automatically", isOn: engine.autoRestore) { engine.autoRestore = $0 }
                 Divided()

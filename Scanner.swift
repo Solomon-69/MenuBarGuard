@@ -4,6 +4,9 @@ import AppKit
 import ApplicationServices
 
 enum Scanner {
+    /// True when the last scan saw macOS's own « overflow arrow (icons pushed out of the bar).
+    nonisolated(unsafe) static var sawOverflow = false
+    nonisolated(unsafe) static var overflowFrame: CGRect = .zero
     static func trusted(prompt: Bool = false) -> Bool {
         guard prompt else { return AXIsProcessTrusted() }
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
@@ -50,6 +53,8 @@ enum Scanner {
     /// Every menu bar icon of every app. Runs off the main thread (a stuck app must not freeze the panel).
     static func scanEntries(selfPID: Int32) -> [BarEntry] {
         var out: [BarEntry] = []
+        var overflow = false, ovFrame = CGRect.zero
+        defer { sawOverflow = overflow; overflowFrame = ovFrame }
         for app in NSWorkspace.shared.runningApplications where app.processIdentifier != selfPID {
             guard let id = app.bundleIdentifier else { continue }
             let system = id == "com.apple.MenuBarAgent" || id == "com.apple.controlcenter" || id == "com.apple.systemuiserver"
@@ -58,7 +63,12 @@ enum Scanner {
                 guard f.width > 0 else { continue }
                 var ident: CFTypeRef?
                 AXUIElementCopyAttributeValue(c, kAXIdentifierAttribute as CFString, &ident)
-                if (ident as? String)?.contains("overflow-indicator") == true { continue }     // macOS's own "more" chevron
+                if (ident as? String)?.contains("overflow-indicator") == true {
+                    // Only counts when it is really on screen (macOS keeps it around off screen when not needed).
+                    let onScreen = NSScreen.screens.contains { f.minX >= $0.frame.minX && f.maxX <= $0.frame.maxX } && f.minX > 1 && f.height > 4
+                    if onScreen { overflow = true }
+                    ovFrame = f; continue
+                }     // macOS's own "more" chevron
                 let label = text(c)
                 out.append(BarEntry(pid: app.processIdentifier, bundleID: id, appName: system ? "Apple" : (app.localizedName ?? id), index: i,
                                     x: f.minX, y: f.minY, width: f.width, height: f.height,

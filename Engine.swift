@@ -44,6 +44,8 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
     /// Icons Roomy hid itself (bundle ID + width), so it can bring them back when there is room.
     @Published var hiddenByGuard: [HiddenRecord] = []
     private var lastHideAt = Date.distantPast
+    /// After a failed hide, stop trying for a while so the pointer is not dragged around every 2 seconds.
+    private var noHideUntil = Date.distantPast
     /// When each app was last in front (or opened). The app used longest ago is closed or hidden first.
     private var lastUsed: [String: Date] = [:]
     private func usedAt(_ bundleID: String, _ pid: Int32) -> Date {
@@ -56,6 +58,11 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
     private var warnedNoCandidate = false
     /// When the last app was closed. Nothing comes back for a while after that, so the bar never flips full, room, full.
     private var lastQuitAt = Date.distantPast
+    /// When an app was last brought back. If the bar fills up right after, stop bringing apps back for 30 minutes (no close, reopen, close loop).
+    private var lastRestoreAt = Date.distantPast
+    private var noRestoreUntil = Date.distantPast
+    /// Apps left inside macOS's « arrow after Roomy made room. Restarted once so they come back into the bar.
+    private var stuck: [String] = []
     private let d = UserDefaults.standard
     private let selfPID = ProcessInfo.processInfo.processIdentifier
     private let ownID = Bundle.main.bundleIdentifier ?? "com.solomon.MenuBarGuard"
@@ -71,9 +78,19 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         }
         let nc = NSWorkspace.shared.notificationCenter
         for n in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
-            nc.addObserver(forName: n, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.scheduleTick() }
+            nc.addObserver(forName: n, object: nil, queue: .main) { [weak self] note in
+                let id = (note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication)?.bundleIdentifier
+                let launched = note.name == NSWorkspace.didLaunchApplicationNotification
+                Task { @MainActor in
+                    if launched, let id { self?.justLaunched[id] = Date(); self?.lastUsed[id] = Date(); self?.saveUsed() }
+                    self?.scheduleTick()
+                }
             }
+        }
+        // Clicking an app's menu bar icon counts as using it (menu bar apps are rarely "in front").
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] ev in
+            let p = NSEvent.mouseLocation
+            Task { @MainActor in self?.noteBarClick(p) }
         }
         if let f = NSWorkspace.shared.frontmostApplication?.bundleIdentifier { lastUsed[f] = Date() }
         nc.addObserver(forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main) { [weak self] n in
@@ -82,6 +99,47 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         }
         Task { await tick() }
     }
+    /// Apps opened in the last minute. If macOS drops a new one behind the « arrows, Roomy brings it out and closes an old app instead.
+    private var justLaunched: [String: Date] = [:]
+    private var clickMonitor: Any?
+
+    private func noteBarClick(_ p: NSPoint) {
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(p) }) ?? NSScreen.main else { return }
+        let fromTop = screen.frame.maxY - p.y
+        guard fromTop >= 0, fromTop <= 40 else { return }
+        let x = p.x - screen.frame.minX
+        if let e = entries.first(where: { x >= $0.x - 2 && x <= $0.x + $0.width + 2 }), !e.bundleID.hasPrefix("com.apple.") {
+            lastUsed[e.bundleID] = Date(); saveUsed()
+        }
+    }
+
+    /// A just-opened app whose icon sits in the hidden part (behind the « arrows) that Roomy did not hide on purpose.
+    private func newlyBuried() -> [BarEntry] {
+        guard let sec = sections else { return [] }
+        justLaunched = justLaunched.filter { Date().timeIntervalSince($0.value) < 90 }
+        let mine = Set(hiddenByGuard.map(\.id))
+        return entries.filter {
+            justLaunched[$0.bundleID] != nil && !mine.contains($0.id) && $0.bundleID != ownID
+                && SectionLogic.section($0, sec.dividers) == .hidden
+        }
+    }
+
+    /// Bring a newly opened app out from behind the arrows. Afterwards the normal check closes the app used longest ago.
+    private func unbury() async {
+        guard let move = moveIcon else { return }
+        let buried = newlyBuried()
+        guard !buried.isEmpty else { return }
+        busy = true
+        for e in buried {
+            add("\(e.title) opened behind the arrows. Moving it into the bar.", "info")
+            if await move(e, .visible) { justLaunched[e.bundleID] = nil }
+            else { add("Could not move \(e.title) out from behind the arrows.", "warn"); justLaunched[e.bundleID] = nil }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+        busy = false
+        await refresh()
+    }
+
     private func saveUsed() { d.set(lastUsed.mapValues { $0.timeIntervalSince1970 }, forKey: "lastUsed") }
 
     private func scheduleTick() {
@@ -108,6 +166,9 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         } else {
             lay = SectionLogic.layout(all, rightMin: g.rightMin, maxX: g.maxX)
         }
+        // macOS's « arrow means full, but it lingers a few seconds after an app closes, and only counts when the bar is really tight.
+        var plain = lay; plain.macOverflow = false
+        lay.macOverflow = Scanner.sawOverflow && Planner.free(plain) < 60 && Date().timeIntervalSince(lastQuitAt) > 15
         if let f = ownFrame(), f.width > 1 {
             lay.items.append(BarItem(pid: selfPID, bundleID: ownID, name: "Roomy", x: f.minX, width: f.width))
         }
@@ -145,6 +206,8 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         guard !busy else { return }
         await refresh()
         guard guardOn, trusted, layout != nil else { return }
+        if !newlyBuried().isEmpty { await unbury() }
+        if !stuck.isEmpty, Date().timeIntervalSince(lastQuitAt) > 12 { await restartStuck() }
         if verdict != .ok {
             // Items can still be sliding into place right after a launch: confirm before acting.
             try? await Task.sleep(nanoseconds: 600_000_000)
@@ -156,10 +219,10 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
                 try? await Task.sleep(nanoseconds: 900_000_000)
                 await refresh()
             }
-            // Next: hide the lowest-priority icons (they keep running, one click on the shield shows them).
-            if verdict != .ok, Prefs.shared.autoHide { await hideFirst() }
-            // Only if the bar is still full after hiding: quit low-priority apps.
+            // Close the app used longest ago (Solomon, 4 Nov 2026: never bury apps behind the arrows).
             if verdict != .ok { await shed() }
+            // Only if nothing can be closed: hide icons, when the user turned that on.
+            if verdict != .ok, Prefs.shared.autoHide, Date() > noHideUntil { await hideFirst() }
         } else {
             warnedNoCandidate = false
             if autoRestore, Date().timeIntervalSince(lastQuitAt) > 120, Date().timeIntervalSince(lastHideAt) > 120 {
@@ -186,15 +249,10 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         guard let move = moveIcon, let sec = sections else { return }
         busy = true; defer { busy = false }
         let prefs = Prefs.shared
-        if !prefs.hidingOn {
-            prefs.hidingOn = true
-            add("Hiding is now on, so Roomy can hide icons when the bar is full.", "info")
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await refresh()
-        }
+        guard prefs.hidingOn else { return }   // never switch hiding on by itself: that buried apps behind the arrows
         // The shield must sit right of the divider. If it does not (or the divider is not placed yet), put the divider far left.
         if sec.orderProblem || sec.dividers.hidden == nil || (sec.dividers.hidden ?? 0) > (entries.filter { $0.x > (layout?.rightMin ?? 0) }.map(\.x).max() ?? 0) {
-            if let place = placeDivider, !(await place()) { add("Could not put the hiding divider in place.", "warn"); return }
+            if let place = placeDivider, !(await place()) { add("Could not put the hiding divider in place.", "warn"); noHideUntil = Date().addingTimeInterval(300); return }
             await refresh()
         }
         var skip = Set<String>(), count = 0
@@ -207,6 +265,7 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
                 lastHideAt = Date(); save()
             } else {
                 add("Could not hide \(e.title).", "warn")
+                noHideUntil = Date().addingTimeInterval(300); break
             }
             try? await Task.sleep(nanoseconds: 600_000_000)
             await refresh()
@@ -237,11 +296,24 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
 
     private func shed() async {
         busy = true; defer { busy = false }
-        var skip: Set<String> = [ownID], count = 0
+        if Date().timeIntervalSince(lastRestoreAt) < 30 { noRestoreUntil = Date().addingTimeInterval(1800) }
+        var skip = Set<String>([ownID]).union(justLaunched.keys), count = 0
+        // Only apps marked Auto-quit may be closed (4 Nov 2026: it closed Awayke, which was never allowed).
+        skip.formUnion(rules.filter { !$0.autoQuit }.map(\.bundleID))
         while verdict != .ok, count < 5, let l = layout {
             var used = lastUsed
-            for it in l.items where used[it.bundleID] == nil { used[it.bundleID] = usedAt(it.bundleID, it.pid) }
-            guard let rule = Planner.nextToQuit(l, rules: rules, skip: skip, lastUsed: used) else {
+            var cand = l
+            // Apps whose icon macOS already pushed into its « arrow are not on screen, but count too.
+            if l.macOverflow {
+                let shown = Set(l.items.map(\.bundleID))
+                for r in rules where !shown.contains(r.bundleID) && !r.bundleID.hasPrefix("com.apple.") && r.bundleID != ownID {
+                    if let a = NSRunningApplication.runningApplications(withBundleIdentifier: r.bundleID).first {
+                        cand.items.append(BarItem(pid: a.processIdentifier, bundleID: r.bundleID, name: r.name, x: -1000, width: 30))
+                    }
+                }
+            }
+            for it in cand.items where used[it.bundleID] == nil { used[it.bundleID] = usedAt(it.bundleID, it.pid) }
+            guard let rule = Planner.nextToQuit(cand, rules: rules, skip: skip, lastUsed: used) else {
                 if !warnedNoCandidate {
                     add("Menu bar is \(verdict == .overflow ? "full" : "almost full"), but no app can be closed.", "warn")
                     warnedNoCandidate = true
@@ -259,6 +331,13 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
             while !app.isTerminated, waited < 8 { try? await Task.sleep(nanoseconds: 250_000_000); waited += 0.25 }
             if app.isTerminated {
                 lastQuitAt = Date()
+                if l.macOverflow {
+                    count = 99   // one app per « arrow sighting; look again once the bar settles
+                    // Apps stuck in the « arrow: restart them once there is room, so macOS puts them back in the bar.
+                    let shown = Set(l.items.map(\.bundleID))
+                    let auto = Set(rules.filter(\.autoQuit).map(\.bundleID))
+                    stuck = cand.items.filter { !shown.contains($0.bundleID) && $0.bundleID != rule.bundleID && auto.contains($0.bundleID) }.map(\.bundleID)
+                }
                 quit.removeAll { $0.bundleID == rule.bundleID }
                 quit.append(QuitRecord(bundleID: rule.bundleID, name: rule.name, path: path,
                                        width: width, date: Date()))
@@ -275,10 +354,29 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         if verdict == .ok { add("Menu bar has room again (\(Int(Planner.free(layout ?? BarLayout(rightMin: 0, maxX: 0, items: [])))) pt free).", "info") }
     }
 
+    private func restartStuck() async {
+        let ids = stuck; stuck = []
+        guard Scanner.sawOverflow else { return }      // macOS already moved them back
+        busy = true; defer { busy = false }
+        for id in ids {
+            guard let a = NSRunningApplication.runningApplications(withBundleIdentifier: id).first, let url = a.bundleURL else { continue }
+            add("\(a.localizedName ?? id) was stuck behind the « arrow. Restarting it so it shows in the bar.", "restore")
+            a.terminate()
+            var w = 0.0
+            while !a.isTerminated, w < 6 { try? await Task.sleep(nanoseconds: 250_000_000); w += 0.25 }
+            let cfg = NSWorkspace.OpenConfiguration(); cfg.activates = false; cfg.addsToRecentItems = false
+            _ = try? await NSWorkspace.shared.openApplication(at: url, configuration: cfg)
+        }
+        lastQuitAt = Date()   // give macOS time to settle before judging the bar again
+        await refresh()
+    }
+
     private func restoreOne() async {
         guard let l = layout, let rec = Planner.nextToRestore(l, rules: rules, quit: quit, margin: margin) else { return }
         busy = true; defer { busy = false }
+        guard Date() > noRestoreUntil else { return }
         add("There is room again. Restarting \(rec.name).", "restore")
+        lastRestoreAt = Date()
         await relaunch(rec)
     }
 
@@ -344,6 +442,7 @@ struct HiddenRecord: Codable, Identifiable, Equatable {
         if let v = d.data(forKey: "quit"), let r = try? x.decode([QuitRecord].self, from: v) { quit = r }
         if let v = d.data(forKey: "log"), let r = try? x.decode([LogEntry].self, from: v) { log = r }
         if let v = d.data(forKey: "hiddenByGuard"), let r = try? x.decode([HiddenRecord].self, from: v) { hiddenByGuard = r }
+        if !Prefs.shared.hidingOn { hiddenByGuard = [] }
         if let m = d.dictionary(forKey: "lastUsed") as? [String: Double] { lastUsed = m.mapValues { Date(timeIntervalSince1970: $0) } }
         if d.object(forKey: "guardOn") != nil { guardOn = d.bool(forKey: "guardOn") }
         if d.object(forKey: "autoRestore") != nil { autoRestore = d.bool(forKey: "autoRestore") }
