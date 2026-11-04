@@ -18,32 +18,87 @@ enum Scanner {
         return (min, s.frame.maxX)
     }
 
-    /// Menu bar icons per app. Runs off the main thread (a stuck app must not freeze the panel).
+    /// Menu bar icons per app (one span per app). Kept for the live scan test.
     static func scanItems(selfPID: Int32) -> [BarItem] {
-        var out: [BarItem] = []
-        for app in NSWorkspace.shared.runningApplications where app.processIdentifier != selfPID {
-            guard let id = app.bundleIdentifier else { continue }
-            let el = AXUIElementCreateApplication(app.processIdentifier)
-            AXUIElementSetMessagingTimeout(el, 0.25)
-            var bar: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(el, "AXExtrasMenuBar" as CFString, &bar) == .success, let b = bar else { continue }
-            var kids: CFTypeRef?
-            AXUIElementCopyAttributeValue(b as! AXUIElement, kAXChildrenAttribute as CFString, &kids)
-            var lo = CGFloat.greatestFiniteMagnitude, hi = -CGFloat.greatestFiniteMagnitude
-            for c in (kids as? [AXUIElement]) ?? [] {
-                var p: CFTypeRef?, s: CFTypeRef?
-                AXUIElementCopyAttributeValue(c, kAXPositionAttribute as CFString, &p)
-                AXUIElementCopyAttributeValue(c, kAXSizeAttribute as CFString, &s)
-                var pt = CGPoint.zero, sz = CGSize.zero
-                if let p = p { AXValueGetValue(p as! AXValue, .cgPoint, &pt) }
-                if let s = s { AXValueGetValue(s as! AXValue, .cgSize, &sz) }
-                lo = min(lo, pt.x); hi = max(hi, pt.x + sz.width)
-            }
-            if hi > lo {
-                out.append(BarItem(pid: app.processIdentifier, bundleID: id,
-                                   name: app.localizedName ?? id, x: lo, width: hi - lo))
+        var spans: [String: BarItem] = [:]
+        for e in scanEntries(selfPID: selfPID) {
+            if var s = spans[e.bundleID] {
+                let hi = max(s.x + s.width, e.x + e.width); s.x = min(s.x, e.x); s.width = hi - s.x; spans[e.bundleID] = s
+            } else {
+                spans[e.bundleID] = BarItem(pid: e.pid, bundleID: e.bundleID, name: e.appName, x: e.x, width: e.width)
             }
         }
-        return out
+        return Array(spans.values)
+    }
+
+    /// Every menu bar icon of every app. Runs off the main thread (a stuck app must not freeze the panel).
+    static func scanEntries(selfPID: Int32) -> [BarEntry] {
+        var out: [BarEntry] = []
+        for app in NSWorkspace.shared.runningApplications where app.processIdentifier != selfPID {
+            guard let id = app.bundleIdentifier else { continue }
+            let system = id == "com.apple.MenuBarAgent" || id == "com.apple.controlcenter" || id == "com.apple.systemuiserver"
+            for (i, c) in extras(app.processIdentifier).enumerated() {
+                let f = frame(c)
+                guard f.width > 0 else { continue }
+                var ident: CFTypeRef?
+                AXUIElementCopyAttributeValue(c, kAXIdentifierAttribute as CFString, &ident)
+                if (ident as? String)?.contains("overflow-indicator") == true { continue }     // macOS's own "more" chevron
+                let label = text(c)
+                out.append(BarEntry(pid: app.processIdentifier, bundleID: id, appName: system ? "Apple" : (app.localizedName ?? id), index: i,
+                                    x: f.minX, y: f.minY, width: f.width, height: f.height,
+                                    label: system && label.isEmpty ? "system icon \(i + 1)" : label))
+            }
+        }
+        return out.sorted { $0.x < $1.x }
+    }
+
+    /// The accessibility elements of one app's menu bar icons.
+    static func extras(_ pid: Int32) -> [AXUIElement] {
+        let el = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(el, 0.25)
+        var bar: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(el, "AXExtrasMenuBar" as CFString, &bar) == .success, let b = bar,
+              CFGetTypeID(b) == AXUIElementGetTypeID() else { return [] }
+        var kids: CFTypeRef?
+        AXUIElementCopyAttributeValue(b as! AXUIElement, kAXChildrenAttribute as CFString, &kids)
+        return (kids as? [AXUIElement]) ?? []
+    }
+
+    static func frame(_ c: AXUIElement) -> CGRect {
+        var p: CFTypeRef?, s: CFTypeRef?
+        AXUIElementCopyAttributeValue(c, kAXPositionAttribute as CFString, &p)
+        AXUIElementCopyAttributeValue(c, kAXSizeAttribute as CFString, &s)
+        var pt = CGPoint.zero, sz = CGSize.zero
+        if let p, CFGetTypeID(p) == AXValueGetTypeID() { AXValueGetValue(p as! AXValue, .cgPoint, &pt) }
+        if let s, CFGetTypeID(s) == AXValueGetTypeID() { AXValueGetValue(s as! AXValue, .cgSize, &sz) }
+        return CGRect(origin: pt, size: sz)
+    }
+
+    private static func text(_ c: AXUIElement) -> String {
+        for key in [kAXDescriptionAttribute, kAXTitleAttribute, kAXHelpAttribute] {
+            var v: CFTypeRef?
+            if AXUIElementCopyAttributeValue(c, key as CFString, &v) == .success, let s = v as? String, !s.isEmpty { return s }
+        }
+        return ""
+    }
+
+    /// Opens one icon's menu, the same as clicking it. Returns false if the app refused.
+    static func press(pid: Int32, index: Int) -> Bool {
+        let all = extras(pid)
+        guard all.indices.contains(index) else { return false }
+        return AXUIElementPerformAction(all[index], kAXPressAction as CFString) == .success
+    }
+
+    /// The right edge of the front app's menus (File, Edit, ...), to tell empty menu bar space from menus.
+    static func appMenusMaxX() -> CGFloat {
+        guard let app = NSWorkspace.shared.frontmostApplication else { return 0 }
+        let el = AXUIElementCreateApplication(app.processIdentifier)
+        AXUIElementSetMessagingTimeout(el, 0.2)
+        var bar: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(el, kAXMenuBarAttribute as CFString, &bar) == .success, let b = bar,
+              CFGetTypeID(b) == AXUIElementGetTypeID() else { return 0 }
+        var kids: CFTypeRef?
+        AXUIElementCopyAttributeValue(b as! AXUIElement, kAXChildrenAttribute as CFString, &kids)
+        return ((kids as? [AXUIElement]) ?? []).map { frame($0).maxX }.max() ?? 0
     }
 }
