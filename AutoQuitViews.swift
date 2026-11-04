@@ -10,7 +10,7 @@ struct PriorityList: View {
     var body: some View {
         VStack(spacing: 8) {
             if !engine.quit.isEmpty { closedBox }
-            Text("Top = keep longest. Guard closes from the bottom up, only apps with Auto-quit on.")
+            Text("Top = keep longest. Roomy closes from the bottom up, only apps with Auto-quit on.")
                 .font(.system(size: 10.5)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
             ScrollView {
                 VStack(spacing: 6) {
@@ -29,7 +29,7 @@ struct PriorityList: View {
     private var closedBox: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label("Closed by Guard", systemImage: "moon.zzz.fill").font(.system(size: 11, weight: .semibold))
+                Label("Closed by Roomy", systemImage: "moon.zzz.fill").font(.system(size: 11, weight: .semibold))
                 Spacer()
                 if engine.quit.count > 1 { Button("Restart all") { engine.restartAll() }.buttonStyle(MiniButton()) }
             }
@@ -54,7 +54,7 @@ struct PriorityList: View {
             icon(engine.appPath(r)).frame(width: 28, height: 28).opacity(running ? 1 : 0.55)
             VStack(alignment: .leading, spacing: 0) {
                 Text(r.name).font(.system(size: 12.5, weight: .medium))
-                Text(closed ? "Closed by Guard" : running ? "In the menu bar" : "Not running")
+                Text(closed ? "Closed by Roomy" : running ? "In the menu bar" : "Not running")
                     .font(.system(size: 10)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
@@ -94,7 +94,7 @@ struct LogList: View {
         VStack(spacing: 8) {
             if engine.log.isEmpty {
                 Spacer()
-                Text("Nothing yet. When Guard closes or restarts an app, it is written here.")
+                Text("Nothing yet. When Roomy closes or restarts an app, it is written here.")
                     .font(.system(size: 12)).foregroundStyle(.secondary).multilineTextAlignment(.center).padding(.horizontal, 30)
                 Spacer()
             } else {

@@ -1,4 +1,4 @@
-// Intro.swift: the welcome window shown once after installing Menu Bar Guard. Five short pages:
+// Intro.swift: the welcome window shown once after installing Roomy. Five short pages:
 // what it does, Accessibility, optional Screen Recording, hiding icons, and how to use it. Skippable. Springs throughout; Reduce Motion gets fades.
 import AppKit
 import Combine
@@ -124,7 +124,7 @@ struct IntroView: View {
                 .scaleEffect(shown || reduceMotion ? 1 : 0.55)
                 .animation(reduceMotion ? nil : .spring(response: 0.7, dampingFraction: 0.6).delay(0.05), value: shown)
                 .rise(0, shown)
-            Text("Welcome to Menu Bar Guard").font(.system(size: 24, weight: .semibold, design: .rounded)).rise(1, shown)
+            Text("Welcome to Roomy").font(.system(size: 24, weight: .semibold, design: .rounded)).rise(1, shown)
             Text("Keeps every menu bar icon visible, even with a notch.").font(.system(size: 13)).foregroundStyle(.secondary)
                 .rise(2, shown)
             VStack(spacing: 8) {
@@ -141,7 +141,7 @@ struct IntroView: View {
         VStack(spacing: 14) {
             tile("hand.raised.fill", 64).rise(0, shown)
             Text("One permission, once").font(.system(size: 22, weight: .semibold, design: .rounded)).rise(1, shown)
-            Text("To see where each icon sits, Menu Bar Guard needs Accessibility access. Turn it on once in System Settings, under Privacy and Security.")
+            Text("To see where each icon sits, Roomy needs Accessibility access. Turn it on once in System Settings, under Privacy and Security.")
                 .font(.system(size: 13)).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .rise(2, shown)
@@ -156,7 +156,7 @@ struct IntroView: View {
                 .frame(width: 28, height: 28)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(ready ? "All set" : "Not set up yet").font(.system(size: 13, weight: .medium))
-                    Text(ready ? "Menu Bar Guard can see the menu bar." : "Or do it later, any time.")
+                    Text(ready ? "Roomy can see the menu bar." : "Or do it later, any time.")
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -205,7 +205,7 @@ struct IntroView: View {
                 feature("chevron.compact.left", "Left of ‹ is hidden", "Click the shield to see those icons, in a bar under the notch.").rise(2, shown)
                 feature("option", "Left of « is always hidden", "Only shows with Option-click on the shield, or its hotkey.").rise(3, shown)
                 feature("hand.draw.fill", "Rearrange in Settings", "Drag icons between sections. No Command key needed.").rise(4, shown)
-                feature("arrow.down.right.and.arrow.up.left", "Hide first, quit last", "If the bar is still full, Guard quits the apps you allowed.").rise(5, shown)
+                feature("arrow.down.right.and.arrow.up.left", "Hide first, quit last", "If the bar is still full, Roomy quits the apps you allowed.").rise(5, shown)
             }
             .padding(.top, 2)
         }
@@ -294,7 +294,7 @@ struct IntroView: View {
             .animation(.spring(response: 0.4, dampingFraction: 0.75), value: page)
             Spacer()
             Button { page < Self.pages - 1 ? go(page + 1) : actions.finish(true) } label: {
-                Text(page < Self.pages - 1 ? "Continue" : "Open Menu Bar Guard")
+                Text(page < Self.pages - 1 ? "Continue" : "Open Roomy")
                     .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                     .padding(.horizontal, 18).frame(height: 34)
                     .background(Capsule().fill(accent))

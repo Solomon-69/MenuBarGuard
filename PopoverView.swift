@@ -76,12 +76,12 @@ struct PopoverView: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 30)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Menu Bar Guard").font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text("Roomy").font(.system(size: 15, weight: .semibold, design: .rounded))
                 Text(statusLine).font(.system(size: 11)).foregroundStyle(.secondary)
                     .contentTransition(.numericText())
             }
             Spacer()
-            SmoothSwitch(isOn: engine.guardOn, title: "Guard on", tint: guardAccent) { engine.guardOn = $0 }
+            SmoothSwitch(isOn: engine.guardOn, title: "Roomy on", tint: guardAccent) { engine.guardOn = $0 }
         }
     }
 
@@ -120,16 +120,16 @@ struct PopoverView: View {
 
     private var settingsTab: some View {
         VStack(spacing: 8) {
-            setting("Bring apps back automatically", "When there is room again, Guard restarts what it closed.") {
+            setting("Bring apps back automatically", "When there is room again, Roomy restarts what it closed.") {
                 SmoothSwitch(isOn: engine.autoRestore, title: "Auto restore", tint: guardAccent) { engine.autoRestore = $0 }
             }
-            setting("Open at login", "Start Menu Bar Guard when you sign in.") {
+            setting("Open at login", "Start Roomy when you sign in.") {
                 SmoothSwitch(isOn: engine.openAtLogin, title: "Open at login", tint: guardAccent) { engine.openAtLogin = $0 }
             }
             setting("Act when free space is below", "\(Int(engine.margin)) pt, about \(max(1, Int(engine.margin / 36))) icon(s).") {
                 Stepper("", value: $engine.margin, in: 20...120, step: 10).labelsHidden()
             }
-            setting("Accessibility access", engine.trusted ? "Granted. Guard can see the menu bar." : "Needed to see where icons are. Nothing is recorded.") {
+            setting("Accessibility access", engine.trusted ? "Granted. Roomy can see the menu bar." : "Needed to see where icons are. Nothing is recorded.") {
                 if engine.trusted {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(guardAccent)
                 } else {
@@ -157,7 +157,7 @@ struct PopoverView: View {
             Button(action: openSettings) { Label("Settings…", systemImage: "gearshape") }.buttonStyle(MiniButton())
                 .help("Hidden sections, Ice Bar, menu bar look, hotkeys and more")
             Spacer()
-            Button("Quit Menu Bar Guard", action: quitApp).buttonStyle(MiniButton())
+            Button("Quit Roomy", action: quitApp).buttonStyle(MiniButton())
         }
     }
 }

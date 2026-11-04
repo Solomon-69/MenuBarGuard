@@ -1,4 +1,4 @@
-// make-icon.swift: draws assets/MenuBarGuard.icns. Run: swift make-icon.swift
+// make-icon.swift: draws assets/Roomy.icns. Run: swift make-icon.swift
 import AppKit
 let dir = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
 func render(_ px: Int) -> Data {
@@ -31,11 +31,11 @@ func render(_ px: Int) -> Data {
     let rep = NSBitmapImageRep(data: img.tiffRepresentation!)!
     return rep.representation(using: .png, properties: [:])!
 }
-let set = dir.appendingPathComponent("assets/MenuBarGuard.iconset")
+let set = dir.appendingPathComponent("assets/Roomy.iconset")
 try? FileManager.default.createDirectory(at: set, withIntermediateDirectories: true)
 for (n, px) in [("16",16),("16@2x",32),("32",32),("32@2x",64),("128",128),("128@2x",256),("256",256),("256@2x",512),("512",512),("512@2x",1024)] {
     try! render(px).write(to: set.appendingPathComponent("icon_\(n.replacingOccurrences(of: "@2x", with: "")==n ? n+"x"+n : n.replacingOccurrences(of: "@2x", with: "x")+"@2x").png"))
 }
-let p = Process(); p.launchPath = "/usr/bin/iconutil"; p.arguments = ["-c", "icns", set.path, "-o", dir.appendingPathComponent("assets/MenuBarGuard.icns").path]
+let p = Process(); p.launchPath = "/usr/bin/iconutil"; p.arguments = ["-c", "icns", set.path, "-o", dir.appendingPathComponent("assets/Roomy.icns").path]
 try! p.run(); p.waitUntilExit()
 try? FileManager.default.removeItem(at: set)

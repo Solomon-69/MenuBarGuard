@@ -32,7 +32,7 @@ struct BarEntry: Equatable, Identifiable {
     var frame: CGRect { CGRect(x: x, y: y, width: width, height: height) }
 }
 
-/// Left edges (screen x) of the two divider icons Menu Bar Guard puts in the bar.
+/// Left edges (screen x) of the two divider icons Roomy puts in the bar.
 struct Dividers: Equatable {
     var hidden: CGFloat?
     var always: CGFloat?
@@ -49,7 +49,7 @@ enum SectionLogic {
 
     static func section(_ e: BarEntry, _ d: Dividers) -> BarSection { section(x: e.x, width: e.width, dividers: d) }
 
-    /// The icons that should be on screen right now. Icons Menu Bar Guard hid on purpose are left out,
+    /// The icons that should be on screen right now. Icons Roomy hid on purpose are left out,
     /// so they never count as "pushed behind the notch".
     static func onScreen(_ entries: [BarEntry], dividers: Dividers, shown: Set<BarSection>) -> [BarEntry] {
         entries.filter { shown.contains(section($0, dividers)) || section($0, dividers) == .visible }
@@ -84,11 +84,11 @@ enum SectionLogic {
     }
 
     /// Where to drop an icon so it lands in `target`. Dividers are measured while every section is shown.
-    /// `hiddenFrame` / `alwaysFrame` are the divider icons' frames, `mainMinX` is Menu Bar Guard's own icon.
+    /// `hiddenFrame` / `alwaysFrame` are the divider icons' frames, `mainMinX` is Roomy's own icon.
     static func dropX(target: BarSection, hiddenFrame: CGRect, alwaysFrame: CGRect?, mainMinX: CGFloat) -> CGFloat {
         switch target {
         case .visible: return min(hiddenFrame.maxX + 6, mainMinX - 4)
-        case .hidden: return alwaysFrame.map { max($0.maxX + 6, hiddenFrame.minX - 4) } ?? hiddenFrame.minX - 4
+        case .hidden: return alwaysFrame.map { max($0.maxX + 6, hiddenFrame.minX - 4) } ?? hiddenFrame.minX + 3
         case .alwaysHidden: return (alwaysFrame ?? hiddenFrame).minX - 4
         }
     }

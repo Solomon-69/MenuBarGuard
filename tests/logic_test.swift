@@ -20,13 +20,17 @@ check(Planner.free(over) == 0, "free is 0 when overflow")
 check(Planner.hidden(bar([it("A", 1500)])).count == 1, "icon past screen edge is hidden")
 check(Planner.verdict(bar([]), margin: 40) == .ok, "empty bar ok")
 
-// Who gets closed: lowest ranked, only if Auto-quit on, never if locked or absent.
+// Who gets closed: the app used longest ago. Apple's icons and "never" apps are skipped.
 let all = bar([it("A", 780), it("B", 820), it("C", 860), it("D", 900)])
-check(Planner.nextToQuit(all, rules: rules(), skip: []) == nil, "nothing closes without Auto-quit (opt-in)")
-check(Planner.nextToQuit(all, rules: rules(auto: ["B", "C"]), skip: [])?.bundleID == "C", "lowest ranked allowed app first")
-check(Planner.nextToQuit(all, rules: rules(auto: ["B", "C"], never: ["C"]), skip: [])?.bundleID == "B", "locked app skipped")
-check(Planner.nextToQuit(all, rules: rules(auto: ["B", "C"]), skip: ["C"])?.bundleID == "B", "skipped app (did not quit) passed over")
-check(Planner.nextToQuit(bar([it("A", 780)]), rules: rules(auto: ["D"]), skip: []) == nil, "app not in bar is not chosen")
+let t0 = Date(timeIntervalSince1970: 1_000_000)
+let used: [String: Date] = ["A": t0 + 400, "B": t0 + 100, "C": t0 + 300, "D": t0 + 200]
+check(Planner.nextToQuit(all, rules: rules(), skip: [], lastUsed: used)?.bundleID == "B", "least recently used app first")
+check(Planner.nextToQuit(all, rules: rules(never: ["B"]), skip: [], lastUsed: used)?.bundleID == "D", "locked app skipped")
+check(Planner.nextToQuit(all, rules: rules(), skip: ["B"], lastUsed: used)?.bundleID == "D", "skipped app (did not quit) passed over")
+check(Planner.nextToQuit(bar([it("com.apple.x", 780), it("A", 820)]), rules: rules(), skip: [], lastUsed: [:])?.bundleID == "A", "Apple icons never chosen")
+check(Planner.nextToQuit(bar([it("com.apple.x", 780)]), rules: rules(), skip: [], lastUsed: [:]) == nil, "only Apple icons: nothing to close")
+check(Planner.nextToQuit(all, rules: rules(), skip: [], lastUsed: ["A": t0, "B": t0, "C": t0, "D": t0])?.bundleID == "A", "tie goes to the left-most icon")
+check(Planner.nextToQuit(bar([it("Z", 820)]), rules: rules(), skip: [], lastUsed: [:])?.bundleID == "Z", "app not on the list can still be closed")
 
 // Restore: needs width + gap + margin + slack of free room, most important first.
 let q = [QuitRecord(bundleID: "C", name: "C", path: nil, width: 30, date: Date()),
@@ -47,6 +51,5 @@ check(Planner.move(r, from: [3], to: 0).map(\.bundleID) == ["D", "A", "B", "C"],
 check(Planner.move(r, from: [0], to: 4).map(\.bundleID) == ["B", "C", "D", "A"], "move first to bottom")
 check(Planner.move(r, from: [1], to: 3).map(\.bundleID) == ["A", "C", "B", "D"], "move middle down")
 check(Planner.seed.first { $0.bundleID.contains("claude") }?.neverQuit == true, "Claude locked by default")
-check(Planner.seed.allSatisfy { !$0.autoQuit }, "no app auto-quits by default")
 print(fails == 0 ? "ALL PASS" : "\(fails) FAILED")
 exit(fails == 0 ? 0 : 1)

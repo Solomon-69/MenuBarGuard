@@ -38,7 +38,7 @@ struct SettingsActions {
         if window == nil {
             let host = NSHostingController(rootView: content)
             let w = NSWindow(contentViewController: host)
-            w.title = "Menu Bar Guard Settings"
+            w.title = "Roomy Settings"
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.toolbarStyle = .unified
@@ -48,7 +48,7 @@ struct SettingsActions {
             w.center()
             window = w
         }
-        // A real Settings window is the one place Menu Bar Guard comes to the front (you asked for it).
+        // A real Settings window is the one place Roomy comes to the front (you asked for it).
         guard activate else { return }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
@@ -237,7 +237,7 @@ struct GeneralPane: View {
                 SwitchRow(title: "When you switch to another app", isOn: prefs.rehideOnAppSwitch) { prefs.rehideOnAppSwitch = $0 }
             }
             SettingsGroup(title: "APP") {
-                SwitchRow(title: "Guard on", detail: "Watch the menu bar: hide first, then quit low-priority apps if still full.", isOn: engine.guardOn) { engine.guardOn = $0 }
+                SwitchRow(title: "Roomy on", detail: "Watch the menu bar: hide first, then quit low-priority apps if still full.", isOn: engine.guardOn) { engine.guardOn = $0 }
                 Divided()
                 SwitchRow(title: "Open at login", isOn: engine.openAtLogin) { engine.openAtLogin = $0 }
             }
@@ -268,7 +268,7 @@ struct AboutPane: View {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         VStack(spacing: 12) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 96, height: 96)
-            Text("Menu Bar Guard").font(.system(size: 22, weight: .semibold, design: .rounded))
+            Text("Roomy").font(.system(size: 22, weight: .semibold, design: .rounded))
             Text("Version \(v)").font(.system(size: 12)).foregroundStyle(.secondary)
             Text("Hides the menu bar icons you rarely need, and if the bar is still full, politely quits the apps you allowed.")
                 .font(.system(size: 12)).multilineTextAlignment(.center).frame(maxWidth: 380)

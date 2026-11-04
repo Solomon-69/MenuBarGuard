@@ -40,7 +40,7 @@ import SwiftUI
             b.action = #selector(statusClicked)
             b.target = self
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            b.setAccessibilityLabel("Menu Bar Guard")
+            b.setAccessibilityLabel("Roomy")
         }
         statusItem.isVisible = prefs.showIcon
         prefs.$showIcon.dropFirst().sink { [weak self] on in DispatchQueue.main.async { self?.statusItem.isVisible = on; if !on { self?.closePanel() } } }.store(in: &cancellables)
@@ -61,7 +61,7 @@ import SwiftUI
         engine.ownFrame = { [weak self] in (self?.prefs.showIcon ?? true) ? self?.statusItem.button?.window?.frame : nil }
         engine.start()
         if !d.bool(forKey: "introDone") { showIntro() }
-        // After an update macOS can drop the Accessibility switch, and Guard then silently does nothing. Ask once at launch.
+        // After an update macOS can drop the Accessibility switch, and Roomy then silently does nothing. Ask once at launch.
         if d.bool(forKey: "introDone"), !Scanner.trusted(), ProcessInfo.processInfo.environment["MBG_NO_ASK"] == nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 4) { if !Scanner.trusted() { Scanner.askAccessibility() } }
         }
@@ -76,6 +76,8 @@ import SwiftUI
         sections.mainFrame = { [weak self] in self?.statusItem.button?.window?.frame }
         sections.install()
         engine.sections = sections
+        engine.placeDivider = { [weak self] in await self?.placeDividerFarLeft() ?? false }
+        engine.moveIcon = { [weak self] e, t in await self?.moveAsync(e, to: t) ?? false }
         sections.dividerClick = { [weak self] collapsed in
             guard let self else { return }
             if collapsed { if self.prefs.showOnClick { self.reveal(always: NSEvent.modifierFlags.contains(.option)) } } else { self.sections.hide() }
@@ -121,7 +123,7 @@ import SwiftUI
     func updateIcon() {
         let bad = !engine.trusted || engine.verdict != .ok
         let name = !engine.guardOn ? "shield.slash" : bad ? "exclamationmark.shield.fill" : "shield.lefthalf.filled"
-        let img = NSImage(systemSymbolName: name, accessibilityDescription: "Menu Bar Guard")
+        let img = NSImage(systemSymbolName: name, accessibilityDescription: "Roomy")
         img?.isTemplate = true
         statusItem.button?.image = img?.withSymbolConfiguration(.init(pointSize: 15, weight: .semibold))
     }
@@ -213,31 +215,55 @@ import SwiftUI
 
     // MARK: Moving icons between sections
 
-    func move(_ e: BarEntry, to target: BarSection) {
-        guard engine.trusted else { engine.add("Moving icons needs Accessibility access.", "warn"); return }
-        guard prefs.hidingOn else { engine.add("Turn on hiding in Settings > General first.", "warn"); return }
-        Task {
-            sections.showForMoving()
-            try? await Task.sleep(nanoseconds: 450_000_000)
-            await engine.refresh()
-            guard let fresh = engine.entries.first(where: { $0.id == e.id }),
-                  let hf = sections.frame(sections.hiddenItem), let main = statusItem.button?.window?.frame else {
-                sections.hide(); engine.add("Could not find \(e.title) to move it.", "warn"); return
-            }
-            let af = prefs.alwaysHiddenOn ? sections.frame(sections.alwaysItem) : nil
-            let x = SectionLogic.dropX(target: target, hiddenFrame: hf, alwaysFrame: af, mainMinX: main.minX)
-            let from = CGPoint(x: fresh.frame.midX, y: fresh.frame.midY)
-            let to = CGPoint(x: x, y: from.y)
+    func move(_ e: BarEntry, to target: BarSection) { Task { _ = await moveAsync(e, to: target) } }
+
+    /// Command-drags the hidden divider left of every icon and of the shield, so nothing is hidden until an icon is moved behind it.
+    func placeDividerFarLeft() async -> Bool {
+        guard engine.trusted, prefs.hidingOn else { return false }
+        sections.showForMoving()
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        await engine.refresh()
+        let top = NSScreen.screens.first?.frame.maxY ?? 0
+        let left = sections.leftLimit()
+        guard let h = sections.frame(sections.hiddenItem), let m = statusItem.button?.window?.frame else { sections.hide(); return false }
+        let leftmost = min(m.minX, engine.entries.filter { $0.x > left }.map(\.x).min() ?? m.minX)
+        if h.minX > leftmost - 4 {
+            let from = CGPoint(x: h.midX, y: top - h.midY)
+            let to = CGPoint(x: leftmost - 6, y: from.y)
             _ = await Task.detached { Mover.commandDrag(from: from, to: to) }.value
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            await engine.refresh()
-            let now = engine.entries.first(where: { $0.bundleID == e.bundleID && abs($0.width - e.width) < 2 }) ?? engine.entries.first { $0.bundleID == e.bundleID }
-            let landed = now.map { SectionLogic.section($0, sections.dividers) }
-            sections.hide()
-            if landed == target { engine.add("Moved \(e.title) to \(target.title).", "info") }
-            else { engine.add("Could not move \(e.title) (macOS did not accept the drag). Command-drag it in the menu bar instead.", "warn") }
-            await engine.refresh()
+            try? await Task.sleep(nanoseconds: 700_000_000)
         }
+        let now = sections.frame(sections.hiddenItem)
+        sections.hide(); sections.apply()
+        await engine.refresh()
+        return (now?.minX ?? .infinity) < leftmost
+    }
+
+    /// True when the icon landed in `target`.
+    func moveAsync(_ e: BarEntry, to target: BarSection) async -> Bool {
+        guard engine.trusted else { engine.add("Moving icons needs Accessibility access.", "warn"); return false }
+        guard prefs.hidingOn else { engine.add("Turn on hiding in Settings > General first.", "warn"); return false }
+        sections.showForMoving()
+        try? await Task.sleep(nanoseconds: 450_000_000)
+        await engine.refresh()
+        guard let fresh = engine.entries.first(where: { $0.id == e.id }),
+              let hf = sections.frame(sections.hiddenItem), let main = statusItem.button?.window?.frame else {
+            sections.hide(); engine.add("Could not find \(e.title) to move it.", "warn"); return false
+        }
+        let af = prefs.alwaysHiddenOn ? sections.frame(sections.alwaysItem) : nil
+        let x = SectionLogic.dropX(target: target, hiddenFrame: hf, alwaysFrame: af, mainMinX: main.minX)
+        let from = CGPoint(x: fresh.frame.midX, y: fresh.frame.midY)
+        let to = CGPoint(x: x, y: from.y)
+        _ = await Task.detached { Mover.commandDrag(from: from, to: to) }.value
+        try? await Task.sleep(nanoseconds: 500_000_000)
+        await engine.refresh()
+        let now = engine.entries.first(where: { $0.bundleID == e.bundleID && abs($0.width - e.width) < 2 }) ?? engine.entries.first { $0.bundleID == e.bundleID }
+        let landed = now.map { SectionLogic.section($0, sections.dividers) }
+        sections.hide()
+        if landed == target { engine.add("Moved \(e.title) to \(target.title).", "info") }
+        else { engine.add("Could not move \(e.title) (macOS did not accept the drag). Command-drag it in the menu bar instead.", "warn") }
+        await engine.refresh()
+        return landed == target
     }
 
     /// Puts the shield just left of Apple's icons, the hidden divider just left of the shield and the

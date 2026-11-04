@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.0
+- Renamed from Menu Bar Guard to Roomy. Same app, same settings and permissions.
+
 ## 1.1.5
 - Menu bar look, Split shape: the left piece now always wraps the app menus (before, it could shrink to a sliver). Both pieces show.
 - The preview in Settings draws the notch like the real one (flat top, rounded bottom).

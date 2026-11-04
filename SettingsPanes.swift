@@ -18,7 +18,7 @@ struct LayoutPane: View {
         let own = Bundle.main.bundleIdentifier ?? ""
         let entries = engine.entries.filter { $0.bundleID != own && $0.x > -20_000 }
         VStack(alignment: .leading, spacing: 4) {
-            PaneTitle(title: "Menu Bar Layout", detail: "Drag icons between the sections. No need to hold Command: Menu Bar Guard moves the real icon for you.")
+            PaneTitle(title: "Menu Bar Layout", detail: "Drag icons between the sections. No need to hold Command: Roomy moves the real icon for you.")
             if sections.orderProblem {
                 HStack(spacing: 10) {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
@@ -236,9 +236,11 @@ struct AutoQuitPane: View {
     @State private var showLog = false
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PaneTitle(title: "Auto-quit", detail: "If the menu bar is still full after hiding icons, Guard politely quits the lowest apps you allowed, and brings them back when there is room.")
+            PaneTitle(title: "Auto-quit", detail: "If the menu bar is still full after hiding icons, Roomy politely quits the lowest apps you allowed, and brings them back when there is room.")
             SettingsGroup {
-                SwitchRow(title: "Show Guard in the menu bar", detail: "Off: Guard keeps working without an icon, so it takes no space. To get Settings back, open Menu Bar Guard again from Applications.", isOn: prefs.showIcon) { prefs.showIcon = $0 }
+                SwitchRow(title: "Show Roomy in the menu bar", detail: "Off: Roomy keeps working without an icon, so it takes no space. To get Settings back, open Roomy again from Applications.", isOn: prefs.showIcon) { prefs.showIcon = $0 }
+                Divided()
+                SwitchRow(title: "Hide icons first when the bar is full", detail: "Roomy moves the lowest apps behind the shield (they keep running). Click the shield to see them.", isOn: prefs.autoHide) { prefs.autoHide = $0 }
                 Divided()
                 SwitchRow(title: "Bring apps back automatically", isOn: engine.autoRestore) { engine.autoRestore = $0 }
                 Divided()

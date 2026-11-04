@@ -1,5 +1,5 @@
 // SearchPanel.swift: type to find any menu bar icon, Enter (or a click) opens its menu.
-// A floating panel that takes the keyboard without bringing Menu Bar Guard to the front.
+// A floating panel that takes the keyboard without bringing Roomy to the front.
 import AppKit
 import SwiftUI
 
@@ -118,7 +118,7 @@ struct SearchView: View {
                 .onChange(of: model.selected) { _, v in if results.indices.contains(v) { proxy.scrollTo(results[v].id) } }
             }
             if results.isEmpty {
-                Text(model.all.isEmpty ? "No icons found. Menu Bar Guard needs Accessibility access." : "Nothing matches.")
+                Text(model.all.isEmpty ? "No icons found. Roomy needs Accessibility access." : "Nothing matches.")
                     .font(.system(size: 12)).foregroundStyle(.secondary).padding(.bottom, 20)
             }
         }

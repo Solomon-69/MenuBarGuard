@@ -83,6 +83,7 @@ import SwiftUI
         let pr = a.prefs
         switch k {
         case "hiding": pr.hidingOn = on
+        case "autohide": pr.autoHide = on
         case "always": pr.alwaysHiddenOn = on
         case "dividers": pr.showDividers = on
         case "icebar": pr.useIceBar = on

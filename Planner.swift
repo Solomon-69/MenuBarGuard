@@ -62,12 +62,15 @@ enum Planner {
         return free(l) < margin ? .tight : .ok
     }
 
-    /// The lowest-ranked app that is allowed to be closed. `rules` run top (most important) to bottom.
-    static func nextToQuit(_ l: BarLayout, rules: [Rule], skip: Set<String>) -> Rule? {
-        let present = Set(l.items.map(\.bundleID))
-        return rules.reversed().first {
-            present.contains($0.bundleID) && $0.autoQuit && !$0.neverQuit && !skip.contains($0.bundleID)
-        }
+    /// The app to close: the one used longest ago. Apple's own icons and apps marked "never" are never picked.
+    /// `lastUsed` holds when each app was last in front (or opened); an app with no date counts as oldest.
+    static func nextToQuit(_ l: BarLayout, rules: [Rule], skip: Set<String>, lastUsed: [String: Date] = [:]) -> Rule? {
+        let never = Set(rules.filter(\.neverQuit).map(\.bundleID))
+        let pick = l.items
+            .filter { !$0.bundleID.hasPrefix("com.apple.") && !never.contains($0.bundleID) && !skip.contains($0.bundleID) }
+            .min { (lastUsed[$0.bundleID] ?? .distantPast, $0.x) < (lastUsed[$1.bundleID] ?? .distantPast, $1.x) }
+        guard let it = pick else { return nil }
+        return rules.first { $0.bundleID == it.bundleID } ?? Rule(bundleID: it.bundleID, name: it.name)
     }
 
     /// The most important closed app that fits back in with room to spare.

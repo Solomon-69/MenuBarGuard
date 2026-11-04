@@ -13,7 +13,7 @@ enum HotkeyAction: String, CaseIterable, Identifiable {
         case .search: return "Search menu bar icons"
         case .toggleIceBar: return "Turn the Ice Bar on or off"
         case .toggleDividers: return "Show or hide the divider icons"
-        case .openPanel: return "Open the Menu Bar Guard panel"
+        case .openPanel: return "Open the Roomy panel"
         }
     }
 }

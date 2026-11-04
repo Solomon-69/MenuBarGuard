@@ -1,9 +1,9 @@
-# Menu Bar Guard
+# Roomy
 
 <p align="center"><img src="assets/icon-light-1024.png" width="128"></p>
 
 Free Mac app for MacBooks with a notch. When you have so many menu bar icons that some hide
-behind the notch (the little double arrow), Menu Bar Guard politely quits the lowest-priority
+behind the notch (the little double arrow), Roomy politely quits the lowest-priority
 apps **you allow**, and brings them back when there is room again.
 
 - **Priority list.** Drag apps into order. Top = keep longest. Lock an app (padlock) to never touch it.
@@ -20,7 +20,7 @@ Open **Settings** (button in the panel). Everything new is off by default, so 1.
 - **Ice Bar.** Shows hidden icons in a bar under the notch. Click one to open its menu.
 - **Triggers.** Show hidden icons by clicking or hovering empty menu bar space, or by scrolling on it. Hides again after a delay or when you switch apps.
 - **Search.** Type to find any menu bar icon, Enter opens it.
-- **Layout.** Drag icons between Visible, Hidden and Always hidden. Menu Bar Guard does the Command-drag for you.
+- **Layout.** Drag icons between Visible, Hidden and Always hidden. Roomy does the Command-drag for you.
 - **Look.** Tint (solid or gradient), shadow, border, rounded or split shape.
 - **Spacing.** Tighter or wider gaps between icons (apps must relaunch).
 - **Hotkeys.** For each section, search, the Ice Bar, the dividers and the panel.
@@ -34,16 +34,16 @@ to reach exactly to the notch instead of using a huge width.
 
 It asks each app where its menu bar icons are (macOS Accessibility). It compares the left-most icon
 with the right edge of the notch. Hidden icons, or less than 40 pt of free space (adjustable), count as "full".
-Menu Bar Guard needs **Accessibility** permission for this. It only reads icon positions; nothing is recorded or sent.
+Roomy needs **Accessibility** permission for this. It only reads icon positions; nothing is recorded or sent.
 
 ## Install
 
-Download `MenuBarGuard.dmg` from the latest release, drag to Applications, open, follow the five welcome screens.
+Download `Roomy.dmg` from the latest release, drag to Applications, open, follow the five welcome screens.
 
 ## Build
 
 ```bash
-./build.sh            # builds build/MenuBarGuard.app (Command Line Tools only)
+./build.sh            # builds build/Roomy.app (Command Line Tools only)
 swiftc -swift-version 5 Planner.swift tests/logic_test.swift -o /tmp/t   # rename logic_test.swift to main.swift first
 swiftc Planner.swift SectionLogic.swift main.swift -o /tmp/st             # main.swift = copy of tests/section_test.swift
 ```

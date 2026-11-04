@@ -38,6 +38,8 @@ struct LookConfig: Codable, Equatable {
     private let d = UserDefaults.standard
 
     @Published var showIcon: Bool { didSet { d.set(showIcon, forKey: "showIcon") } }
+    /// Full bar: hide the lowest-priority icons first (Command-drag them left of the divider), quit apps only if still full.
+    @Published var autoHide: Bool { didSet { d.set(autoHide, forKey: "autoHide") } }
     @Published var hidingOn: Bool { didSet { d.set(hidingOn, forKey: "hidingOn") } }
     @Published var alwaysHiddenOn: Bool { didSet { d.set(alwaysHiddenOn, forKey: "alwaysHiddenOn") } }
     @Published var showDividers: Bool { didSet { d.set(showDividers, forKey: "showDividers") } }
@@ -59,6 +61,7 @@ struct LookConfig: Codable, Equatable {
         let d = UserDefaults.standard
         func b(_ k: String, _ def: Bool) -> Bool { d.object(forKey: k) == nil ? def : d.bool(forKey: k) }
         showIcon = b("showIcon", true)
+        autoHide = b("autoHide", true)
         hidingOn = b("hidingOn", false)
         alwaysHiddenOn = b("alwaysHiddenOn", false)
         showDividers = b("showDividers", true)
