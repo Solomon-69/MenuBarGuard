@@ -264,12 +264,15 @@ struct GeneralPane: View {
 // MARK: About
 
 struct AboutPane: View {
+    @StateObject private var updater = AppUpdater(UpdateConfig(repo: "Solomon-69/Roomy", appName: "Roomy", bundleName: "Roomy.app", zipName: "Roomy-mac.zip"))
     var body: some View {
         let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         VStack(spacing: 12) {
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 96, height: 96)
             Text("Roomy").font(.system(size: 22, weight: .semibold, design: .rounded))
             Text("Version \(v)").font(.system(size: 12)).foregroundStyle(.secondary)
+            UpdateRow(updater: updater, tint: .accentColor, ink: .primary, mute: .secondary, track: Color.primary.opacity(0.1))
+                .padding(12).card().frame(maxWidth: 380)
             Text("Hides the menu bar icons you rarely need, and if the bar is still full, politely quits the apps you allowed.")
                 .font(.system(size: 12)).multilineTextAlignment(.center).frame(maxWidth: 380)
             Text("Free and open source, MIT licence. Hiding features inspired by the behaviour of Ice by Jordan Baird; no Ice code is used.")

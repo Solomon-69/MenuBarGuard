@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.3.3
+- New: Check for updates in Settings, About. Updates: the bar now follows the real download, then shows checking and installing, and a failed update says why.
+
 ## 1.2.0
 - Renamed from Menu Bar Guard to Roomy. Same app, same settings and permissions.
 
